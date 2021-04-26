@@ -17,6 +17,7 @@ func init() {
 }
 
 func generateHostSigner() (gossh.Signer, error) {
+	log.Println("generating new host key...")
 	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, err
@@ -33,6 +34,7 @@ func generateHostSigner() (gossh.Signer, error) {
 }
 
 func readHostSigner() (gossh.Signer, error) {
+	log.Println("reading host key...")
 	keyBytes, err := os.ReadFile(privateKeyPath)
 	if err != nil {
 		return nil, err
