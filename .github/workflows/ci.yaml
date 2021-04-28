@@ -8,6 +8,7 @@ jobs:
   lint:
     runs-on: self-hosted
     steps:
+      - uses: enowars/action-cleanup-runner@v1
       - uses: actions/checkout@v2
       - uses: golangci/golangci-lint-action@v2
         with:
@@ -18,6 +19,7 @@ jobs:
     runs-on: self-hosted
     needs: lint
     steps:
+      - uses: enowars/action-cleanup-runner@v1
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
         with:
@@ -30,6 +32,7 @@ jobs:
     runs-on: self-hosted
     needs: test
     steps:
+      - uses: enowars/action-cleanup-runner@v1
       - uses: actions/checkout@v2
       - uses: go-semantic-release/action@v1
         id: semrel
