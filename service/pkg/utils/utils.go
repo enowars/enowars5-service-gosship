@@ -8,7 +8,7 @@ import (
 	gossh "golang.org/x/crypto/ssh"
 )
 
-var privateKeyPath = "service.key"
+var privateKeyPath = "server.key"
 
 func init() {
 	if pkp, ok := os.LookupEnv("PRIVATE_KEY_PATH"); ok {

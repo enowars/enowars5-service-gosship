@@ -1,7 +1,7 @@
 package main
 
 import (
-	"gosship/pkg/host"
+	"gosship/pkg/chat"
 	"gosship/pkg/logger"
 	"gosship/pkg/utils"
 
@@ -19,9 +19,10 @@ func main() {
 	}
 	log.Printf("loaded key with fingerprint: %s\n", gossh.FingerprintLegacyMD5(signer.PublicKey()))
 	log.Println("setting up host...")
-	h := host.New(log)
+	h := chat.NewHost(log)
+	go h.Serve()
 
-	log.Println("creating ssh-server...")
+	log.Println("starting ssh server...")
 	srv := &ssh.Server{
 		Addr:             ":2222",
 		Handler:          h.HandleNewSession,
@@ -29,7 +30,6 @@ func main() {
 		Version:          "gosship",
 		PublicKeyHandler: h.HandlePublicKey,
 	}
-	log.Println("starting ssh server...")
 	err = srv.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
