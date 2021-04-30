@@ -111,6 +111,8 @@ func (h *Host) Serve() {
 			h.sendMessageToAllUsers(v)
 		case *DirectMessage:
 			h.sendMessageToUser(v)
+		case *CommandMessage:
+			h.handleUserCommand(v)
 		default:
 			h.log.Error("unknown message type")
 		}
@@ -147,7 +149,7 @@ func (h *Host) sendMessageToUser(msg *DirectMessage) {
 	defer h.mu.RUnlock()
 	to, ok := h.users[msg.To]
 	if !ok {
-		err := msg.From.WriteLine(aurora.Sprintf("user %s not found", aurora.Red(msg.To)))
+		err := msg.From.WriteLine(aurora.Sprintf(aurora.Yellow("user %s not found on the server."), aurora.Red(msg.To)))
 		if err != nil {
 			h.log.Error(err)
 		}
@@ -158,6 +160,20 @@ func (h *Host) sendMessageToUser(msg *DirectMessage) {
 		if err != nil {
 			h.log.Error(err)
 		}
+	}
+}
+func (h *Host) handleUserCommand(msg *CommandMessage) {
+	cmd := FindCommand(msg.Cmd)
+	if cmd == nil {
+		err := msg.From.WriteLine(aurora.Sprintf(aurora.Yellow("command %s not found. use /help to list all available commands."), aurora.Red(msg.Cmd)))
+		if err != nil {
+			h.log.Error(err)
+		}
+		return
+	}
+	err := cmd.Handler(h, msg)
+	if err != nil {
+		_ = msg.From.WriteLine(aurora.Sprintf(aurora.Red("command error: %s"), err.Error()))
 	}
 }
 

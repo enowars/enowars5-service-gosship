@@ -46,7 +46,7 @@ func (a *AnnouncementMessage) String() string {
 }
 
 func (a *AnnouncementMessage) RenderFor(u *User) string {
-	return aurora.Sprintf("%s", aurora.Gray(12, a.Body))
+	return aurora.Sprintf(aurora.Yellow("-> %s"), a.Body)
 }
 
 type PublicMessage struct {
@@ -78,14 +78,41 @@ func (d *DirectMessage) String() string {
 
 func (d *DirectMessage) RenderFor(u *User) string {
 	if u.Name == d.From.Name {
-		return aurora.Sprintf("%s[%s]: %s", aurora.Yellow("**"), aurora.Magenta(d.From.Name), d.Body)
+		return aurora.Sprintf("%s [%s]: %s", aurora.Yellow("*private*"), aurora.Magenta(d.From.Name), d.Body)
 	}
-	return aurora.Sprintf("%s[%s]: %s", aurora.Yellow("**"), d.From.RenderName(), d.Body)
+	return aurora.Sprintf("%s [%s]: %s", aurora.Yellow("*private*"), d.From.RenderName(), d.Body)
+}
+
+type CommandMessage struct {
+	*rawMessage
+	From *User
+	Cmd  string
+	Args []string
+}
+
+func (c *CommandMessage) String() string {
+	return fmt.Sprintf("CommandMessage[from=%s][cmd=%s][args=%s]%s", c.From.Name, c.Cmd, c.Args, c.rawMessage.String())
+}
+
+func (c *CommandMessage) RenderFor(u *User) string {
+	return c.String()
+}
+
+func NewCommandMessage(rawBody, cmd string, args []string, from *User) *CommandMessage {
+	return &CommandMessage{
+		rawMessage: newRawMessage(rawBody),
+		From:       from,
+		Cmd:        cmd,
+		Args:       args,
+	}
 }
 
 func ParseDirectMessage(args []string, from *User) (Message, error) {
 	if len(args) < 2 {
 		return nil, fmt.Errorf("invalid direct message command")
+	}
+	if args[0] == from.Name {
+		return nil, fmt.Errorf("you cannot send a direct message to yourself")
 	}
 	return &DirectMessage{
 		rawMessage: newRawMessage(strings.Join(args[1:], " ")),
@@ -97,11 +124,14 @@ func ParseDirectMessage(args []string, from *User) (Message, error) {
 func ParseMessage(m string, from *User) (Message, error) {
 	if strings.HasPrefix(m, "/") {
 		args := strings.Fields(m)
-		switch strings.ToLower(args[0]) {
-		case "/dm":
+		cmd := strings.ToLower(args[0])[1:]
+		if len(cmd) == 0 {
+			return nil, fmt.Errorf("invalid command")
+		}
+		if cmd == "dm" {
 			return ParseDirectMessage(args[1:], from)
 		}
-		return nil, fmt.Errorf("command not found")
+		return NewCommandMessage(m, cmd, args[1:], from), nil
 	}
 	return &PublicMessage{
 		rawMessage: newRawMessage(m),
