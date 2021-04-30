@@ -26,7 +26,7 @@ func (h *Host) HandleNewSession(session ssh.Session) {
 		h.log.Error(err)
 		code = -1
 	}
-	if err := session.Exit(code); err != nil {
+	if err := session.Exit(code); err != nil && err != io.EOF {
 		h.log.Error(err)
 	}
 }
