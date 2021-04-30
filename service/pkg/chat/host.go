@@ -8,20 +8,24 @@ import (
 	"github.com/gliderlabs/ssh"
 	"github.com/logrusorgru/aurora/v3"
 	"github.com/sirupsen/logrus"
-	gossh "golang.org/x/crypto/ssh"
 )
 
 const title = "              _____ _____ _    _ _       \n             / ____/ ____| |  | (_)      \n   __ _  ___| (___| (___ | |__| |_ _ __  \n  / _` |/ _ \\\\___ \\\\___ \\|  __  | | '_ \\ \n | (_| | (_) |___) |___) | |  | | | |_) |\n  \\__, |\\___/_____/_____/|_|  |_|_| .__/ \n   __/ |                          | |    \n  |___/                           |_|    "
 
 type Host struct {
 	log     *logrus.Logger
-	mu      sync.Mutex
+	mu      sync.RWMutex
 	users   map[string]*User
 	msgChan chan Message
 }
 
 func (h *Host) HandleNewSession(session ssh.Session) {
-	code := h.handleNewSessionWithExitCode(session)
+	code := 0
+	err := h.handleNewSessionWithError(session)
+	if err != nil {
+		h.log.Error(err)
+		code = -1
+	}
 	if err := session.Exit(code); err != nil {
 		h.log.Error(err)
 	}
@@ -34,37 +38,62 @@ func (h *Host) AddUser(u *User) bool {
 		return false
 	}
 	h.users[u.Name] = u
+	h.log.Printf("[%s] added\n", u.Name)
 	return true
 }
 
-func (h *Host) handleNewSessionWithExitCode(session ssh.Session) int {
+func (h *Host) RemoveUser(name string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(h.users, name)
+	h.log.Printf("[%s] removed\n", name)
+}
+
+func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 	_, _, isPty := session.Pty()
 	if !isPty {
 		_, err := io.WriteString(session, "No PTY requested.\n")
 		if err != nil {
-			h.log.Error(err)
-			return -1
+			return err
 		}
+		return fmt.Errorf("no PTY requested")
 	}
-	h.log.Printf("new session: user=%s [%s]\n", session.User(), gossh.FingerprintLegacyMD5(session.PublicKey()))
 	u := NewUser(session)
+	h.log.Printf("[%s] new session: fingerprint=(%s)\n", u.Name, u.Fingerprint)
 	if !h.AddUser(u) {
-		_, err := fmt.Fprintf(u.Term, "%s is already logged in!\n\n", aurora.Red(u.Name))
+		err := u.WriteLine(aurora.Sprintf("%s is already logged in!\n", aurora.Red(u.Name)))
 		if err != nil {
-			h.log.Error(err)
-			return -1
+			return err
 		}
-		return -1
+		return fmt.Errorf("[%s] already logged in", u.Name)
 	}
-	_, err := fmt.Fprintf(u.Term, "%s\n\n🦄 Welcome %s!\n\n", aurora.Green(title), aurora.Magenta(u.Name))
+	defer h.RemoveUser(u.Name)
+	err := u.WriteLine(aurora.Sprintf("%s\n\n🦄 Welcome %s!\n", aurora.Green(title), aurora.Magenta(u.Name)))
 	if err != nil {
-		h.log.Error(err)
-		return -1
+		return err
 	}
-	_, _ = u.Term.ReadLine()
-	//TODO: Parse Message
-	//TODO: send to h.msgChan
-	return 0
+	h.msgChan <- NewAnnouncementMessage(aurora.Sprintf("%s joined the room.", u.RenderName()))
+	for {
+		line, err := u.Term.ReadLine()
+		if err != nil {
+			if err != io.EOF {
+				h.log.Error(err)
+			}
+			break
+		}
+		if line == "" {
+			_, _ = u.Term.Write([]byte{})
+			continue
+		}
+		parsedMessage, err := ParseMessage(line, u)
+		if err != nil {
+			_ = u.WriteLine(aurora.Sprintf(aurora.Red("invalid message: %s"), err.Error()))
+			continue
+		}
+		h.msgChan <- parsedMessage
+	}
+	h.msgChan <- NewAnnouncementMessage(aurora.Sprintf("%s left the room.", u.RenderName()))
+	return nil
 }
 
 func (h *Host) HandlePublicKey(ctx ssh.Context, key ssh.PublicKey) bool {
@@ -74,7 +103,40 @@ func (h *Host) HandlePublicKey(ctx ssh.Context, key ssh.PublicKey) bool {
 
 func (h *Host) Serve() {
 	for msg := range h.msgChan {
-		h.log.Println(msg)
+		h.log.Println(msg.String())
+		switch v := msg.(type) {
+		case *PublicMessage:
+			h.SendMessageToAllUsersInRoom(v)
+		case *AnnouncementMessage:
+			h.SendMessageToAllUsers(v)
+		default:
+			h.log.Error("unknown message type")
+		}
+	}
+}
+
+func (h *Host) SendMessageToAllUsersInRoom(msg *PublicMessage) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for _, u := range h.users {
+		if u.CurrentRoom != msg.Room {
+			continue
+		}
+		err := u.WriteMessage(msg)
+		if err != nil {
+			h.log.Error(err)
+		}
+	}
+}
+
+func (h *Host) SendMessageToAllUsers(msg *AnnouncementMessage) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for _, u := range h.users {
+		err := u.WriteMessage(msg)
+		if err != nil {
+			h.log.Error(err)
+		}
 	}
 }
 
@@ -82,6 +144,6 @@ func NewHost(log *logrus.Logger) *Host {
 	return &Host{
 		log:     log,
 		users:   make(map[string]*User),
-		msgChan: make(chan Message),
+		msgChan: make(chan Message, 10),
 	}
 }

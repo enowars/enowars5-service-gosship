@@ -30,6 +30,7 @@ func main() {
 		Version:          "gosship",
 		PublicKeyHandler: h.HandlePublicKey,
 	}
+	log.Printf("listening on %s\n", srv.Addr)
 	err = srv.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
