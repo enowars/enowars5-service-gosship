@@ -2,68 +2,47 @@ package chat
 
 import (
 	"gosship/pkg/terminal"
-
-	"golang.org/x/term"
+	"io"
 
 	"github.com/gliderlabs/ssh"
+	"github.com/logrusorgru/aurora/v3"
+	gossh "golang.org/x/crypto/ssh"
 )
 
 type User struct {
-	Session ssh.Session
-	Name    string
-	Term    *term.Terminal
-	//currentRoom *Room
+	Session     ssh.Session
+	Name        string
+	Term        *terminal.Terminal
+	CurrentRoom Room
+	Fingerprint string
 }
 
 func NewUser(session ssh.Session) *User {
 	name := session.User()
-
+	prompt := aurora.Sprintf("[%s]: ", aurora.Magenta(name))
 	u := &User{
-		Session: session,
-		Name:    name,
-		Term:    terminal.New(session),
+		Session:     session,
+		Name:        name,
+		Term:        terminal.New(session, prompt),
+		CurrentRoom: "default",
+		Fingerprint: gossh.FingerprintLegacyMD5(session.PublicKey()),
 	}
-	u.handleWinCh()
 	return u
 }
 
-func (u *User) handleWinCh() {
-	ptyReq, winCh, _ := u.Session.Pty()
-	_ = u.Term.SetSize(ptyReq.Window.Width, ptyReq.Window.Height)
-	go func() {
-		for win := range winCh {
-			_ = u.Term.SetSize(win.Width, win.Height)
-		}
-	}()
+func (u *User) WriteLine(line string) error {
+	_, err := io.WriteString(u.Term, line+"\n")
+	if err == io.EOF {
+		return nil
+	}
+	return err
+
 }
 
-//
-//func (u *User) handleMessages() {
-//	for {
-//		line, err := u.terminal.ReadLine()
-//		if err == io.EOF {
-//			break
-//		}
-//		checkErr(err, "handleMessages")
-//		if u.currentRoom != nil {
-//			u.currentRoom.Send(NewMessage(u, line))
-//		}
-//	}
-//	checkErr(u.session.Exit(0))
-//}
-//
-//func (u *User) writeString(msg string) error {
-//	_, err := io.WriteString(u.terminal, msg)
-//	if err == io.EOF {
-//		return nil
-//	}
-//	return err
-//}
-//
-//func (u *User) SendMessage(msg *Message) {
-//	u.writeString(aurora.Sprintf("\r%20s | %s\n", aurora.Green(msg.from.name), msg.msg))
-//}
+func (u *User) WriteMessage(msg Message) error {
+	return u.WriteLine(msg.RenderFor(u))
+}
 
-//func (u *User) SetRoom(room *Room) {
-//	u.currentRoom = room
-//}
+func (u *User) RenderName() string {
+	return aurora.Cyan(u.Name).String()
+}
