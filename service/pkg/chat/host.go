@@ -72,7 +72,7 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 	if err != nil {
 		return err
 	}
-	h.msgChan <- NewAnnouncementMessage(aurora.Sprintf("%s joined the room.", u.RenderName()))
+	h.Announcement(aurora.Sprintf("%s joined the room.", u.RenderName()))
 	for {
 		line, err := u.Term.ReadLine()
 		if err != nil {
@@ -87,12 +87,12 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 		}
 		parsedMessage, err := ParseMessage(line, u)
 		if err != nil {
-			_ = u.WriteLine(aurora.Sprintf(aurora.Red("invalid message: %s"), err.Error()))
+			_ = u.WriteLine(aurora.Sprintf(aurora.Red("error: %s"), err.Error()))
 			continue
 		}
 		h.msgChan <- parsedMessage
 	}
-	h.msgChan <- NewAnnouncementMessage(aurora.Sprintf("%s left the room.", u.RenderName()))
+	h.Announcement(aurora.Sprintf("%s left the room.", u.RenderName()))
 	return nil
 }
 
@@ -106,16 +106,18 @@ func (h *Host) Serve() {
 		h.log.Println(msg.String())
 		switch v := msg.(type) {
 		case *PublicMessage:
-			h.SendMessageToAllUsersInRoom(v)
+			h.sendMessageToAllUsersInRoom(v)
 		case *AnnouncementMessage:
-			h.SendMessageToAllUsers(v)
+			h.sendMessageToAllUsers(v)
+		case *DirectMessage:
+			h.sendMessageToUser(v)
 		default:
 			h.log.Error("unknown message type")
 		}
 	}
 }
 
-func (h *Host) SendMessageToAllUsersInRoom(msg *PublicMessage) {
+func (h *Host) sendMessageToAllUsersInRoom(msg *PublicMessage) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for _, u := range h.users {
@@ -129,7 +131,7 @@ func (h *Host) SendMessageToAllUsersInRoom(msg *PublicMessage) {
 	}
 }
 
-func (h *Host) SendMessageToAllUsers(msg *AnnouncementMessage) {
+func (h *Host) sendMessageToAllUsers(msg *AnnouncementMessage) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for _, u := range h.users {
@@ -138,6 +140,29 @@ func (h *Host) SendMessageToAllUsers(msg *AnnouncementMessage) {
 			h.log.Error(err)
 		}
 	}
+}
+
+func (h *Host) sendMessageToUser(msg *DirectMessage) {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	to, ok := h.users[msg.To]
+	if !ok {
+		err := msg.From.WriteLine(aurora.Sprintf("user %s not found", aurora.Red(msg.To)))
+		if err != nil {
+			h.log.Error(err)
+		}
+		return
+	}
+	for _, u := range []*User{msg.From, to} {
+		err := u.WriteMessage(msg)
+		if err != nil {
+			h.log.Error(err)
+		}
+	}
+}
+
+func (h *Host) Announcement(msg string) {
+	h.msgChan <- NewAnnouncementMessage(msg)
 }
 
 func NewHost(log *logrus.Logger) *Host {

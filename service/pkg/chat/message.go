@@ -69,12 +69,39 @@ func (p *PublicMessage) RenderFor(u *User) string {
 type DirectMessage struct {
 	*rawMessage
 	From *User
-	To   *User
+	To   string
+}
+
+func (d *DirectMessage) String() string {
+	return fmt.Sprintf("DirectMessage[to=%s][from=%s]%s", d.To, d.From.Name, d.rawMessage.String())
+}
+
+func (d *DirectMessage) RenderFor(u *User) string {
+	if u.Name == d.From.Name {
+		return aurora.Sprintf("%s[%s]: %s", aurora.Yellow("**"), aurora.Magenta(d.From.Name), d.Body)
+	}
+	return aurora.Sprintf("%s[%s]: %s", aurora.Yellow("**"), d.From.RenderName(), d.Body)
+}
+
+func ParseDirectMessage(args []string, from *User) (Message, error) {
+	if len(args) < 2 {
+		return nil, fmt.Errorf("invalid direct message command")
+	}
+	return &DirectMessage{
+		rawMessage: newRawMessage(strings.Join(args[1:], " ")),
+		From:       from,
+		To:         args[0],
+	}, nil
 }
 
 func ParseMessage(m string, from *User) (Message, error) {
 	if strings.HasPrefix(m, "/") {
-		return nil, fmt.Errorf("commands not implemented yet")
+		args := strings.Fields(m)
+		switch strings.ToLower(args[0]) {
+		case "/dm":
+			return ParseDirectMessage(args[1:], from)
+		}
+		return nil, fmt.Errorf("command not found")
 	}
 	return &PublicMessage{
 		rawMessage: newRawMessage(m),
