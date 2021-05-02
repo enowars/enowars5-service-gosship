@@ -2,6 +2,7 @@ package chat
 
 import (
 	"fmt"
+	"gosship/pkg/database"
 	"io"
 	"sync"
 
@@ -17,6 +18,7 @@ type Host struct {
 	mu      sync.RWMutex
 	users   map[string]*User
 	msgChan chan Message
+	db      *database.Database
 }
 
 func (h *Host) HandleNewSession(session ssh.Session) {
@@ -58,7 +60,12 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 		}
 		return fmt.Errorf("no PTY requested")
 	}
-	u := NewUser(session)
+
+	u, err := NewUser(h.db, session)
+	if err != nil {
+		return err
+	}
+
 	h.log.Printf("[%s] new session: fingerprint=(%s)\n", u.Name, u.Fingerprint)
 	if !h.AddUser(u) {
 		err := u.WriteLine(aurora.Sprintf("%s is already logged in!\n", aurora.Red(u.Name)))
@@ -68,7 +75,7 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 		return fmt.Errorf("[%s] already logged in", u.Name)
 	}
 	defer h.RemoveUser(u.Name)
-	err := u.WriteLine(aurora.Sprintf("%s\n\n🦄 Welcome %s!\n", aurora.Green(title), aurora.Magenta(u.Name)))
+	err = u.WriteLine(aurora.Sprintf("%s\n\n🦄 Welcome %s!\n", aurora.Green(title), aurora.Magenta(u.Name)))
 	if err != nil {
 		return err
 	}
@@ -181,10 +188,11 @@ func (h *Host) Announcement(msg string) {
 	h.msgChan <- NewAnnouncementMessage(msg)
 }
 
-func NewHost(log *logrus.Logger) *Host {
+func NewHost(log *logrus.Logger, db *database.Database) *Host {
 	return &Host{
 		log:     log,
 		users:   make(map[string]*User),
 		msgChan: make(chan Message, 10),
+		db:      db,
 	}
 }
