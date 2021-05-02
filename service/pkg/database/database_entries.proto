@@ -1,0 +1,21 @@
+syntax = "proto3";
+option go_package = "pkg/database";
+
+import "google/protobuf/timestamp.proto";
+
+message ConfigEntry {
+  bytes PrivateKey = 1;
+}
+
+message UserEntry {
+  string Fingerprint = 1;
+  string Name = 2;
+  string CurrentRoom = 3;
+}
+
+message DirectMessageEntry{
+  string To = 1;
+  string From = 2;
+  string Body = 3;
+  google.protobuf.Timestamp Timestamp = 4;
+}

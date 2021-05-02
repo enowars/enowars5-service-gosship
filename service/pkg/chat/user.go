@@ -1,8 +1,11 @@
 package chat
 
 import (
+	"gosship/pkg/database"
 	"gosship/pkg/terminal"
 	"io"
+
+	"github.com/google/uuid"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/logrusorgru/aurora/v3"
@@ -10,14 +13,22 @@ import (
 )
 
 type User struct {
+	Id          string
 	Session     ssh.Session
 	Name        string
 	Term        *terminal.Terminal
 	CurrentRoom Room
 	Fingerprint string
+	db          *database.Database
 }
 
-func NewUser(session ssh.Session) *User {
+func NewUser(db *database.Database, session ssh.Session) (*User, error) {
+	fingerprint := gossh.FingerprintLegacyMD5(session.PublicKey())
+	userId, userEntry, err := db.FindUserByFingerprint(fingerprint)
+	if err != nil {
+		return nil, err
+	}
+
 	name := session.User()
 	prompt := aurora.Sprintf("[%s]: ", aurora.Magenta(name))
 	u := &User{
@@ -25,9 +36,28 @@ func NewUser(session ssh.Session) *User {
 		Name:        name,
 		Term:        terminal.New(session, prompt),
 		CurrentRoom: "default",
-		Fingerprint: gossh.FingerprintLegacyMD5(session.PublicKey()),
+		Fingerprint: fingerprint,
+		db:          db,
+		Id:          "",
 	}
-	return u
+
+	if userId != "" {
+		u.Id = userId
+		u.CurrentRoom = Room(userEntry.CurrentRoom)
+	} else {
+		u.Id = uuid.NewString()
+	}
+
+	err = db.AddOrUpdateUser(u.Id, &database.UserEntry{
+		Fingerprint: u.Fingerprint,
+		Name:        u.Name,
+		CurrentRoom: string(u.CurrentRoom),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return u, nil
 }
 
 func (u *User) WriteLine(line string) error {
@@ -39,7 +69,14 @@ func (u *User) WriteLine(line string) error {
 
 }
 
+func (u *User) pushDirectMessage(dm *DirectMessage) {
+	// TODO
+}
+
 func (u *User) WriteMessage(msg Message) error {
+	if dm, ok := msg.(*DirectMessage); ok {
+		u.pushDirectMessage(dm)
+	}
 	return u.WriteLine(msg.RenderFor(u))
 }
 

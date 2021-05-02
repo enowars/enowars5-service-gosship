@@ -3,51 +3,28 @@ package utils
 import (
 	"crypto/ed25519"
 	"crypto/rand"
-	"os"
+	"gosship/pkg/database"
 
+	"github.com/dgraph-io/badger/v3"
 	gossh "golang.org/x/crypto/ssh"
 )
 
-var privateKeyPath = "server.key"
-
-func init() {
-	if pkp, ok := os.LookupEnv("PRIVATE_KEY_PATH"); ok {
-		privateKeyPath = pkp
+func GetHostSigner(db *database.Database) (gossh.Signer, error) {
+	config, err := db.GetConfig()
+	if err != nil && err != badger.ErrKeyNotFound {
+		return nil, err
 	}
-}
+	if err != badger.ErrKeyNotFound {
+		return gossh.NewSignerFromSigner(ed25519.PrivateKey(config.PrivateKey))
+	}
 
-func generateHostSigner() (gossh.Signer, error) {
 	_, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(privateKeyPath, privateKey, 0400); err != nil {
-		return nil, err
-	}
-
-	signer, err := gossh.NewSignerFromSigner(privateKey)
+	err = db.SetConfig(&database.ConfigEntry{PrivateKey: privateKey})
 	if err != nil {
 		return nil, err
 	}
-	return signer, nil
-}
-
-func readHostSigner() (gossh.Signer, error) {
-	keyBytes, err := os.ReadFile(privateKeyPath)
-	if err != nil {
-		return nil, err
-	}
-
-	signer, err := gossh.NewSignerFromSigner(ed25519.PrivateKey(keyBytes))
-	if err != nil {
-		return nil, err
-	}
-	return signer, nil
-}
-
-func GetHostSigner() (gossh.Signer, error) {
-	if _, err := os.Stat(privateKeyPath); os.IsNotExist(err) {
-		return generateHostSigner()
-	}
-	return readHostSigner()
+	return gossh.NewSignerFromSigner(privateKey)
 }
