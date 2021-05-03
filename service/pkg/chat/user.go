@@ -14,6 +14,7 @@ import (
 
 var ErrFingerprintDoesNotMatch = errors.New("the public key does not match with the username")
 var ErrFingerprintAlreadyRegistered = errors.New("the public key is already used")
+var ErrDummyUser = errors.New("user is a dummy")
 
 type User struct {
 	Id          string
@@ -23,6 +24,7 @@ type User struct {
 	CurrentRoom string
 	Fingerprint string
 	db          *database.Database
+	Dummy       bool
 }
 
 func NewUser(db *database.Database, session ssh.Session) (*User, error) {
@@ -60,6 +62,7 @@ func NewUser(db *database.Database, session ssh.Session) (*User, error) {
 		Fingerprint: fingerprint,
 		db:          db,
 		Id:          "",
+		Dummy:       false,
 	}
 
 	if userId != "" {
@@ -82,6 +85,9 @@ func NewUser(db *database.Database, session ssh.Session) (*User, error) {
 }
 
 func (u *User) WriteLine(line string) error {
+	if u.Dummy {
+		return ErrDummyUser
+	}
 	_, err := io.WriteString(u.Term, line+"\n")
 	if err == io.EOF {
 		return nil
@@ -91,6 +97,9 @@ func (u *User) WriteLine(line string) error {
 }
 
 func (u *User) WriteMessage(msg Message) error {
+	if u.Dummy {
+		return ErrDummyUser
+	}
 	return u.WriteLine(msg.RenderFor(u))
 }
 

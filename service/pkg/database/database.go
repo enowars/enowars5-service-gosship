@@ -3,9 +3,12 @@ package database
 import (
 	"fmt"
 	"os"
+	"sort"
+	"time"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/google/uuid"
+	"github.com/logrusorgru/aurora/v3"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
@@ -121,6 +124,149 @@ func (db *Database) FindUserByPredicate(predicate func(entry *UserEntry) bool) (
 func (db *Database) AddMessageEntry(m *MessageEntry) error {
 	db.log.Println(m)
 	return db.addNewEntry(TypeMessageEntry, uuid.NewString(), m)
+}
+
+type MessageEntries []*MessageEntry
+
+func (m MessageEntries) Len() int {
+	return len(m)
+}
+
+func (m MessageEntries) Less(i, j int) bool {
+	return m[i].Timestamp.AsTime().Before(m[j].Timestamp.AsTime())
+}
+
+func (m MessageEntries) Swap(i, j int) {
+	m[i], m[j] = m[j], m[i]
+}
+
+func (db *Database) GetRecentMessagesForUserAndRoom(uid, room string) (MessageEntries, error) {
+	res := make(MessageEntries, 0)
+	pastMarker := time.Now().Add(-10 * time.Minute)
+	err := db.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			if item.UserMeta() != TypeMessageEntry {
+				continue
+			}
+			var tmp MessageEntry
+			err := it.Item().Value(func(val []byte) error {
+				return proto.Unmarshal(val, &tmp)
+			})
+			if err != nil {
+				return err
+			}
+			if tmp.Timestamp.AsTime().Before(pastMarker) {
+				continue
+			}
+			if tmp.Type == MessageType_DIRECT && tmp.To != uid && tmp.From != uid {
+				continue
+			}
+			if (tmp.Type == MessageType_ROOM_ANNOUNCEMENT || tmp.Type == MessageType_PUBLIC) && tmp.Room != room {
+				continue
+			}
+			res = append(res, &tmp)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Sort(res)
+	return res, err
+}
+
+func (db *Database) GetUserById(id string) (*UserEntry, error) {
+	var ue UserEntry
+	err := db.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(id))
+		if err != nil {
+			return err
+		}
+		if item.UserMeta() != TypeUserEntry {
+			return fmt.Errorf("invalid database record type")
+		}
+		return item.Value(func(val []byte) error {
+			return proto.Unmarshal(val, &ue)
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &ue, nil
+}
+
+func (db *Database) Dump() {
+	err := db.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			err := item.Value(func(val []byte) error {
+				var logEntry string
+				switch item.UserMeta() {
+				case TypeConfigEntry:
+					var ce ConfigEntry
+					err := proto.Unmarshal(val, &ce)
+					if err != nil {
+						db.log.Error(err)
+						return nil
+					}
+					logEntry = aurora.Sprintf("%s: %s", aurora.Red("TypeConfigEntry"), ce.String())
+				case TypeUserEntry:
+					var ue UserEntry
+					err := proto.Unmarshal(val, &ue)
+					if err != nil {
+						db.log.Error(err)
+						return nil
+					}
+					logEntry = aurora.Sprintf("%s: %s", aurora.Red("TypeUserEntry"), ue.String())
+				case TypeMessageEntry:
+					var me MessageEntry
+					err := proto.Unmarshal(val, &me)
+					if err != nil {
+						db.log.Error(err)
+						return nil
+					}
+					logEntry = aurora.Sprintf("%s: %s", aurora.Red("TypeMessageEntry"), me.String())
+				default:
+					logEntry = aurora.Sprintf(aurora.Red("unknown type"))
+				}
+				db.log.Println(logEntry)
+				return nil
+			})
+			if err != nil {
+				db.log.Error(err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		db.log.Error(err)
+	}
+}
+
+func (db *Database) ResetExceptConfig() {
+	err := db.db.Update(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			if item.UserMeta() == TypeConfigEntry {
+				continue
+			}
+			err := txn.Delete(item.Key())
+			if err != nil {
+				db.log.Error(err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		db.log.Error(err)
+	}
 }
 
 func (db *Database) Close() {
