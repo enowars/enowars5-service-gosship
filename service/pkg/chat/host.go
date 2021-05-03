@@ -6,6 +6,8 @@ import (
 	"io"
 	"sync"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"github.com/gliderlabs/ssh"
 	"github.com/logrusorgru/aurora/v3"
 	"github.com/sirupsen/logrus"
@@ -119,19 +121,50 @@ func (h *Host) HandlePublicKey(ctx ssh.Context, key ssh.PublicKey) bool {
 }
 
 func (h *Host) Serve() {
+	skipSave := false
+	var msgEntry database.MessageEntry
 	for msg := range h.msgChan {
 		h.Log.Println(msg.String())
 		switch v := msg.(type) {
-		case *PublicMessage, *RoomAnnouncementMessage:
+		case *PublicMessage:
+			msgEntry.Type = database.MessageType_PUBLIC
+			msgEntry.Body = v.Body
+			msgEntry.Timestamp = timestamppb.New(v.Timestamp)
+			msgEntry.From = v.From.Id
+			msgEntry.Room = v.Room
+			h.sendMessageToAllUsersInRoom(v)
+		case *RoomAnnouncementMessage:
+			msgEntry.Type = database.MessageType_ROOM_ANNOUNCEMENT
+			msgEntry.Body = v.Body
+			msgEntry.Timestamp = timestamppb.New(v.Timestamp)
+			msgEntry.Room = v.Room
 			h.sendMessageToAllUsersInRoom(v)
 		case *AnnouncementMessage:
+			msgEntry.Type = database.MessageType_ANNOUNCEMENT
+			msgEntry.Body = v.Body
+			msgEntry.Timestamp = timestamppb.New(v.Timestamp)
 			h.sendMessageToAllUsers(v)
 		case *DirectMessage:
+			toId := h.resolveUserNameToID(v.To)
+			msgEntry.Type = database.MessageType_DIRECT
+			msgEntry.Body = v.Body
+			msgEntry.Timestamp = timestamppb.New(v.Timestamp)
+			msgEntry.From = v.From.Id
+			msgEntry.To = toId
+			skipSave = toId == ""
 			h.sendMessageToUser(v)
 		case *CommandMessage:
+			skipSave = true
 			h.handleUserCommand(v)
 		default:
+			skipSave = true
 			h.Log.Error("unknown message type")
+		}
+		if skipSave {
+			continue
+		}
+		if err := h.Database.AddMessageEntry(&msgEntry); err != nil {
+			h.Log.Error(err)
 		}
 	}
 }
@@ -170,6 +203,15 @@ func (h *Host) sendMessageToAllUsers(msg *AnnouncementMessage) {
 			h.Log.Error(err)
 		}
 	}
+}
+
+func (h *Host) resolveUserNameToID(name string) string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	if u, ok := h.users[name]; ok {
+		return u.Id
+	}
+	return ""
 }
 
 func (h *Host) sendMessageToUser(msg *DirectMessage) {

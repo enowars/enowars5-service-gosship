@@ -90,14 +90,7 @@ func (u *User) WriteLine(line string) error {
 
 }
 
-func (u *User) pushDirectMessage(dm *DirectMessage) {
-	// TODO
-}
-
 func (u *User) WriteMessage(msg Message) error {
-	if dm, ok := msg.(*DirectMessage); ok {
-		u.pushDirectMessage(dm)
-	}
 	return u.WriteLine(msg.RenderFor(u))
 }
 
