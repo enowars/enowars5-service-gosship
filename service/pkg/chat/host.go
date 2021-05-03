@@ -6,11 +6,10 @@ import (
 	"io"
 	"sync"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/gliderlabs/ssh"
 	"github.com/logrusorgru/aurora/v3"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const title = "              _____ _____ _    _ _       \n             / ____/ ____| |  | (_)      \n   __ _  ___| (___| (___ | |__| |_ _ __  \n  / _` |/ _ \\\\___ \\\\___ \\|  __  | | '_ \\ \n | (_| | (_) |___) |___) | |  | | | |_) |\n  \\__, |\\___/_____/_____/|_|  |_|_| .__/ \n   __/ |                          | |    \n  |___/                           |_|    "
@@ -91,6 +90,21 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 	if err != nil {
 		return err
 	}
+	oldMessages, err := h.Database.GetRecentMessagesForUserAndRoom(u.Id, u.CurrentRoom)
+	if err != nil {
+		return err
+	}
+	for _, oldMsg := range oldMessages {
+		conMsg, err := h.convertMessageEntryToMessage(oldMsg)
+		if err != nil {
+			h.Log.Error(err)
+			continue
+		}
+		err = u.WriteMessage(conMsg)
+		if err != nil {
+			h.Log.Error(err)
+		}
+	}
 	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s joined the room.", u.RenderName()))
 	for {
 		line, err := u.Term.ReadLine()
@@ -121,9 +135,9 @@ func (h *Host) HandlePublicKey(ctx ssh.Context, key ssh.PublicKey) bool {
 }
 
 func (h *Host) Serve() {
-	skipSave := false
-	var msgEntry database.MessageEntry
 	for msg := range h.msgChan {
+		var msgEntry database.MessageEntry
+		skipSave := false
 		h.Log.Println(msg.String())
 		switch v := msg.(type) {
 		case *PublicMessage:
@@ -212,6 +226,66 @@ func (h *Host) resolveUserNameToID(name string) string {
 		return u.Id
 	}
 	return ""
+}
+
+func (h *Host) convertMessageEntryToMessage(me *database.MessageEntry) (Message, error) {
+	rm := &rawMessage{
+		Timestamp: me.Timestamp.AsTime(),
+		Body:      me.Body,
+	}
+	var from *User
+	if me.From != "" {
+		fromEntry, err := h.Database.GetUserById(me.From)
+		if err != nil {
+			return nil, err
+		}
+		from = &User{
+			Id:    me.From,
+			Name:  fromEntry.Name,
+			Dummy: true,
+		}
+	}
+	var to *User
+	if me.To != "" {
+		toEntry, err := h.Database.GetUserById(me.To)
+		if err != nil {
+			return nil, err
+		}
+		to = &User{
+			Id:    me.To,
+			Name:  toEntry.Name,
+			Dummy: true,
+		}
+	}
+
+	switch me.Type {
+	case database.MessageType_PUBLIC:
+		return &PublicMessage{
+			rawMessage: rm,
+			From:       from,
+			Room:       me.Room,
+		}, nil
+	case database.MessageType_DIRECT:
+		if to == nil {
+			return nil, fmt.Errorf("recipient not found")
+		}
+		return &DirectMessage{
+			rawMessage: rm,
+			From:       from,
+			To:         to.Name,
+			ToResolved: to,
+		}, nil
+	case database.MessageType_ROOM_ANNOUNCEMENT:
+		return &RoomAnnouncementMessage{
+			rawMessage: rm,
+			Room:       me.Room,
+		}, nil
+	case database.MessageType_ANNOUNCEMENT:
+		return &AnnouncementMessage{
+			rawMessage: rm,
+		}, nil
+	}
+	return nil, fmt.Errorf("invalid message type")
 }
 
 func (h *Host) sendMessageToUser(msg *DirectMessage) {

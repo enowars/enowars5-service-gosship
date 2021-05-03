@@ -89,8 +89,9 @@ func (p *PublicMessage) RenderFor(u *User) string {
 
 type DirectMessage struct {
 	*rawMessage
-	From *User
-	To   string
+	From       *User
+	To         string
+	ToResolved *User
 }
 
 func (d *DirectMessage) String() string {
@@ -139,6 +140,7 @@ func ParseDirectMessage(args []string, from *User) (Message, error) {
 		rawMessage: newRawMessage(strings.Join(args[1:], " ")),
 		From:       from,
 		To:         args[0],
+		ToResolved: nil,
 	}, nil
 }
 
