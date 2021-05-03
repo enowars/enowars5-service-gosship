@@ -13,9 +13,19 @@ message UserEntry {
   string CurrentRoom = 3;
 }
 
-message DirectMessageEntry{
-  string To = 1;
-  string From = 2;
+enum MessageType {
+  UNKNOWN = 0;
+  PUBLIC = 1;
+  DIRECT = 2;
+  ROOM_ANNOUNCEMENT = 3;
+  ANNOUNCEMENT = 4;
+}
+
+message MessageEntry{
+  MessageType Type = 1;
+  google.protobuf.Timestamp Timestamp = 2;
   string Body = 3;
-  google.protobuf.Timestamp Timestamp = 4;
+  string Room = 4;
+  string To = 5;
+  string From = 6;
 }

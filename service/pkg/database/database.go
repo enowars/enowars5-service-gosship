@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/dgraph-io/badger/v3"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
@@ -20,10 +21,10 @@ func init() {
 const (
 	TypeConfigEntry byte = iota
 	TypeUserEntry
-	TypeDirectMessageEntry
+	TypeMessageEntry
 )
 
-var configEntryKey = []byte("server-config")
+var configEntryKey = "server-config"
 
 type Database struct {
 	log *logrus.Logger
@@ -43,11 +44,22 @@ func NewDatabase(log *logrus.Logger) (*Database, error) {
 	}, nil
 }
 
+func (db *Database) addNewEntry(meta byte, id string, msg proto.Message) error {
+	val, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	entry := badger.NewEntry([]byte(id), val).WithMeta(meta)
+	return db.db.Update(func(txn *badger.Txn) error {
+		return txn.SetEntry(entry)
+	})
+}
+
 func (db *Database) GetConfig() (*ConfigEntry, error) {
 	db.log.Println("getting config...")
 	var ce ConfigEntry
 	err := db.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(configEntryKey)
+		item, err := txn.Get([]byte(configEntryKey))
 		if err != nil {
 			return err
 		}
@@ -66,26 +78,12 @@ func (db *Database) GetConfig() (*ConfigEntry, error) {
 
 func (db *Database) SetConfig(ce *ConfigEntry) error {
 	db.log.Println("updating config...")
-	val, err := proto.Marshal(ce)
-	if err != nil {
-		return err
-	}
-	entry := badger.NewEntry(configEntryKey, val).WithMeta(TypeConfigEntry)
-	return db.db.Update(func(txn *badger.Txn) error {
-		return txn.SetEntry(entry)
-	})
+	return db.addNewEntry(TypeConfigEntry, configEntryKey, ce)
 }
 
 func (db *Database) AddOrUpdateUser(id string, u *UserEntry) error {
 	db.log.Printf("adding/updating user with id: %s\n", id)
-	val, err := proto.Marshal(u)
-	if err != nil {
-		return err
-	}
-	entry := badger.NewEntry([]byte(id), val).WithMeta(TypeUserEntry)
-	return db.db.Update(func(txn *badger.Txn) error {
-		return txn.SetEntry(entry)
-	})
+	return db.addNewEntry(TypeUserEntry, id, u)
 }
 
 func (db *Database) FindUserByPredicate(predicate func(entry *UserEntry) bool) (string, *UserEntry, error) {
@@ -118,6 +116,11 @@ func (db *Database) FindUserByPredicate(predicate func(entry *UserEntry) bool) (
 		return "", nil, err
 	}
 	return usedId, ue, nil
+}
+
+func (db *Database) AddMessageEntry(m *MessageEntry) error {
+	db.log.Println(m)
+	return db.addNewEntry(TypeMessageEntry, uuid.NewString(), m)
 }
 
 func (db *Database) Close() {
