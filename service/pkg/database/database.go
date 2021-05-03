@@ -12,14 +12,15 @@ import (
 var databasePath = "./db"
 
 func init() {
-	if pkp, ok := os.LookupEnv("DATABASE_PATH"); ok {
-		databasePath = pkp
+	if dbp, ok := os.LookupEnv("DATABASE_PATH"); ok {
+		databasePath = dbp
 	}
 }
 
 const (
 	TypeConfigEntry byte = iota
 	TypeUserEntry
+	TypeDirectMessageEntry
 )
 
 var configEntryKey = []byte("server-config")
@@ -87,7 +88,7 @@ func (db *Database) AddOrUpdateUser(id string, u *UserEntry) error {
 	})
 }
 
-func (db *Database) FindUserByFingerprint(fingerprint string) (string, *UserEntry, error) {
+func (db *Database) FindUserByPredicate(predicate func(entry *UserEntry) bool) (string, *UserEntry, error) {
 	var ue *UserEntry
 	var usedId string
 	err := db.db.View(func(txn *badger.Txn) error {
@@ -105,7 +106,7 @@ func (db *Database) FindUserByFingerprint(fingerprint string) (string, *UserEntr
 			if err != nil {
 				return err
 			}
-			if tmp.Fingerprint == fingerprint {
+			if predicate(&tmp) {
 				ue = &tmp
 				usedId = string(item.Key())
 				return nil

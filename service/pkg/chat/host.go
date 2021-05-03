@@ -14,22 +14,22 @@ import (
 const title = "              _____ _____ _    _ _       \n             / ____/ ____| |  | (_)      \n   __ _  ___| (___| (___ | |__| |_ _ __  \n  / _` |/ _ \\\\___ \\\\___ \\|  __  | | '_ \\ \n | (_| | (_) |___) |___) | |  | | | |_) |\n  \\__, |\\___/_____/_____/|_|  |_|_| .__/ \n   __/ |                          | |    \n  |___/                           |_|    "
 
 type Host struct {
-	log     *logrus.Logger
-	mu      sync.RWMutex
-	users   map[string]*User
-	msgChan chan Message
-	db      *database.Database
+	Log      *logrus.Logger
+	mu       sync.RWMutex
+	users    map[string]*User
+	msgChan  chan Message
+	Database *database.Database
 }
 
 func (h *Host) HandleNewSession(session ssh.Session) {
 	code := 0
 	err := h.handleNewSessionWithError(session)
 	if err != nil {
-		h.log.Error(err)
+		h.Log.Error(err)
 		code = -1
 	}
 	if err := session.Exit(code); err != nil && err != io.EOF {
-		h.log.Error(err)
+		h.Log.Error(err)
 	}
 }
 
@@ -40,7 +40,7 @@ func (h *Host) AddUser(u *User) bool {
 		return false
 	}
 	h.users[u.Name] = u
-	h.log.Printf("[%s] added\n", u.Name)
+	h.Log.Printf("[%s] added\n", u.Name)
 	return true
 }
 
@@ -48,43 +48,53 @@ func (h *Host) RemoveUser(name string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	delete(h.users, name)
-	h.log.Printf("[%s] removed\n", name)
+	h.Log.Printf("[%s] removed\n", name)
+}
+
+func (h *Host) writeLineLogError(w io.Writer, s string) {
+	_, err := io.WriteString(w, s+"\n")
+	if err != nil {
+		h.Log.Error(err)
+	}
 }
 
 func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 	_, _, isPty := session.Pty()
 	if !isPty {
-		_, err := io.WriteString(session, "No PTY requested.\n")
-		if err != nil {
-			return err
-		}
+		h.writeLineLogError(session, "No PTY requested!")
 		return fmt.Errorf("no PTY requested")
 	}
 
-	u, err := NewUser(h.db, session)
+	u, err := NewUser(h.Database, session)
 	if err != nil {
+		if err == ErrFingerprintDoesNotMatch {
+			h.writeLineLogError(session, "The provided public key does not match with the username!")
+		}
+		if err == ErrFingerprintAlreadyRegistered {
+			h.writeLineLogError(session, "The provided public key is already linked to a username!")
+		}
 		return err
 	}
 
-	h.log.Printf("[%s] new session: fingerprint=(%s)\n", u.Name, u.Fingerprint)
+	h.Log.Printf("[%s] new session: fingerprint=(%s)\n", u.Name, u.Fingerprint)
 	if !h.AddUser(u) {
-		err := u.WriteLine(aurora.Sprintf("%s is already logged in!\n", aurora.Red(u.Name)))
+		err := u.WriteLine(aurora.Sprintf("%s is already logged in!", aurora.Red(u.Name)))
 		if err != nil {
 			return err
 		}
 		return fmt.Errorf("[%s] already logged in", u.Name)
 	}
 	defer h.RemoveUser(u.Name)
-	err = u.WriteLine(aurora.Sprintf("%s\n\n🦄 Welcome %s!\n", aurora.Green(title), aurora.Magenta(u.Name)))
+	err = u.WriteLine(aurora.Sprintf("%s\n\n🦄 Welcome %s! You are now in room %s.\n", aurora.Green(title), aurora.Magenta(u.Name), aurora.Yellow(u.CurrentRoom)))
 	if err != nil {
 		return err
 	}
-	h.Announcement(aurora.Sprintf("%s joined the room.", u.RenderName()))
+	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s joined the room.", u.RenderName()))
 	for {
 		line, err := u.Term.ReadLine()
 		if err != nil {
 			if err != io.EOF {
-				h.log.Error(err)
+				h.Log.Error(err)
 			}
 			break
 		}
@@ -99,20 +109,20 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 		}
 		h.msgChan <- parsedMessage
 	}
-	h.Announcement(aurora.Sprintf("%s left the room.", u.RenderName()))
+	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s left the room.", u.RenderName()))
 	return nil
 }
 
 func (h *Host) HandlePublicKey(ctx ssh.Context, key ssh.PublicKey) bool {
-	h.log.Printf("new connection (%s) with key type: %s\n", ctx.RemoteAddr(), key.Type())
+	h.Log.Printf("new connection (%s) with key type: %s\n", ctx.RemoteAddr(), key.Type())
 	return true
 }
 
 func (h *Host) Serve() {
 	for msg := range h.msgChan {
-		h.log.Println(msg.String())
+		h.Log.Println(msg.String())
 		switch v := msg.(type) {
-		case *PublicMessage:
+		case *PublicMessage, *RoomAnnouncementMessage:
 			h.sendMessageToAllUsersInRoom(v)
 		case *AnnouncementMessage:
 			h.sendMessageToAllUsers(v)
@@ -121,21 +131,32 @@ func (h *Host) Serve() {
 		case *CommandMessage:
 			h.handleUserCommand(v)
 		default:
-			h.log.Error("unknown message type")
+			h.Log.Error("unknown message type")
 		}
 	}
 }
 
-func (h *Host) sendMessageToAllUsersInRoom(msg *PublicMessage) {
+func (h *Host) sendMessageToAllUsersInRoom(msg Message) {
+	var room string
+	if v, ok := msg.(*PublicMessage); ok {
+		room = v.Room
+	}
+	if v, ok := msg.(*RoomAnnouncementMessage); ok {
+		room = v.Room
+	}
+	if room == "" {
+		h.Log.Error("room not found in message")
+		return
+	}
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for _, u := range h.users {
-		if u.CurrentRoom != msg.Room {
+		if u.CurrentRoom != room {
 			continue
 		}
 		err := u.WriteMessage(msg)
 		if err != nil {
-			h.log.Error(err)
+			h.Log.Error(err)
 		}
 	}
 }
@@ -146,7 +167,7 @@ func (h *Host) sendMessageToAllUsers(msg *AnnouncementMessage) {
 	for _, u := range h.users {
 		err := u.WriteMessage(msg)
 		if err != nil {
-			h.log.Error(err)
+			h.Log.Error(err)
 		}
 	}
 }
@@ -158,14 +179,14 @@ func (h *Host) sendMessageToUser(msg *DirectMessage) {
 	if !ok {
 		err := msg.From.WriteLine(aurora.Sprintf(aurora.Yellow("user %s not found on the server."), aurora.Red(msg.To)))
 		if err != nil {
-			h.log.Error(err)
+			h.Log.Error(err)
 		}
 		return
 	}
 	for _, u := range []*User{msg.From, to} {
 		err := u.WriteMessage(msg)
 		if err != nil {
-			h.log.Error(err)
+			h.Log.Error(err)
 		}
 	}
 }
@@ -174,7 +195,7 @@ func (h *Host) handleUserCommand(msg *CommandMessage) {
 	if cmd == nil {
 		err := msg.From.WriteLine(aurora.Sprintf(aurora.Yellow("command %s not found. use /help to list all available commands."), aurora.Red(msg.Cmd)))
 		if err != nil {
-			h.log.Error(err)
+			h.Log.Error(err)
 		}
 		return
 	}
@@ -186,13 +207,18 @@ func (h *Host) handleUserCommand(msg *CommandMessage) {
 
 func (h *Host) Announcement(msg string) {
 	h.msgChan <- NewAnnouncementMessage(msg)
+
+}
+
+func (h *Host) RoomAnnouncement(room, msg string) {
+	h.msgChan <- NewRoomAnnouncementMessage(room, msg)
 }
 
 func NewHost(log *logrus.Logger, db *database.Database) *Host {
 	return &Host{
-		log:     log,
-		users:   make(map[string]*User),
-		msgChan: make(chan Message, 10),
-		db:      db,
+		Log:      log,
+		users:    make(map[string]*User),
+		msgChan:  make(chan Message, 10),
+		Database: db,
 	}
 }

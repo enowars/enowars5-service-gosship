@@ -1,35 +1,56 @@
 package chat
 
 import (
+	"errors"
 	"gosship/pkg/database"
 	"gosship/pkg/terminal"
 	"io"
 
-	"github.com/google/uuid"
-
 	"github.com/gliderlabs/ssh"
+	"github.com/google/uuid"
 	"github.com/logrusorgru/aurora/v3"
 	gossh "golang.org/x/crypto/ssh"
 )
+
+var ErrFingerprintDoesNotMatch = errors.New("the public key does not match with the username")
+var ErrFingerprintAlreadyRegistered = errors.New("the public key is already used")
 
 type User struct {
 	Id          string
 	Session     ssh.Session
 	Name        string
 	Term        *terminal.Terminal
-	CurrentRoom Room
+	CurrentRoom string
 	Fingerprint string
 	db          *database.Database
 }
 
 func NewUser(db *database.Database, session ssh.Session) (*User, error) {
-	fingerprint := gossh.FingerprintLegacyMD5(session.PublicKey())
-	userId, userEntry, err := db.FindUserByFingerprint(fingerprint)
+	name := session.User()
+	userId, userEntry, err := db.FindUserByPredicate(func(entry *database.UserEntry) bool {
+		return entry.Name == name
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	name := session.User()
+	fingerprint := gossh.FingerprintLegacyMD5(session.PublicKey())
+	if userId != "" && userEntry.Fingerprint != "" && userEntry.Fingerprint != fingerprint {
+		return nil, ErrFingerprintDoesNotMatch
+	}
+
+	if userId == "" {
+		fingerprintUserId, _, err := db.FindUserByPredicate(func(entry *database.UserEntry) bool {
+			return entry.Fingerprint == fingerprint
+		})
+		if err != nil {
+			return nil, err
+		}
+		if fingerprintUserId != "" {
+			return nil, ErrFingerprintAlreadyRegistered
+		}
+	}
+
 	prompt := aurora.Sprintf("[%s]: ", aurora.Magenta(name))
 	u := &User{
 		Session:     session,
@@ -43,7 +64,7 @@ func NewUser(db *database.Database, session ssh.Session) (*User, error) {
 
 	if userId != "" {
 		u.Id = userId
-		u.CurrentRoom = Room(userEntry.CurrentRoom)
+		u.CurrentRoom = userEntry.CurrentRoom
 	} else {
 		u.Id = uuid.NewString()
 	}
@@ -51,7 +72,7 @@ func NewUser(db *database.Database, session ssh.Session) (*User, error) {
 	err = db.AddOrUpdateUser(u.Id, &database.UserEntry{
 		Fingerprint: u.Fingerprint,
 		Name:        u.Name,
-		CurrentRoom: string(u.CurrentRoom),
+		CurrentRoom: u.CurrentRoom,
 	})
 	if err != nil {
 		return nil, err
