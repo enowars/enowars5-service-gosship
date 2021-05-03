@@ -49,6 +49,18 @@ var Commands = []*Command{
 			return msg.From.Session.Close()
 		},
 	},
+	{
+		Prefix: "info",
+		Help:   "info about the logged-in user",
+		Handler: func(h *Host, msg *CommandMessage) error {
+			info := table.NewWriter()
+			info.AppendRow(table.Row{"Database ID", msg.From.Id})
+			info.AppendRow(table.Row{"Name", msg.From.Name})
+			info.AppendRow(table.Row{"Fingerprint", msg.From.Fingerprint})
+			info.AppendRow(table.Row{"Current Room", msg.From.CurrentRoom})
+			return msg.From.WriteLine(info.Render())
+		},
+	},
 }
 
 func init() {
