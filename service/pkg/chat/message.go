@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/acarl005/stripansi"
 	"github.com/logrusorgru/aurora/v3"
 )
 
@@ -26,7 +27,7 @@ func newRawMessage(body string) *rawMessage {
 }
 
 func (m *rawMessage) String() string {
-	return fmt.Sprintf("[%s]: %s", m.Timestamp.Format(time.RFC3339), m.Body)
+	return fmt.Sprintf("[%s]: %s", m.Timestamp.Format(time.RFC3339), stripansi.Strip(m.Body))
 }
 
 func (m *rawMessage) RenderFor(u *User) string {
@@ -49,10 +50,30 @@ func (a *AnnouncementMessage) RenderFor(u *User) string {
 	return aurora.Sprintf(aurora.Yellow("-> %s"), a.Body)
 }
 
+type RoomAnnouncementMessage struct {
+	*rawMessage
+	Room string
+}
+
+func NewRoomAnnouncementMessage(room, body string) *RoomAnnouncementMessage {
+	return &RoomAnnouncementMessage{
+		rawMessage: newRawMessage(body),
+		Room:       room,
+	}
+}
+
+func (r *RoomAnnouncementMessage) String() string {
+	return fmt.Sprintf("RoomAnnouncementMessage[room=%s]%s", r.Room, r.rawMessage.String())
+}
+
+func (r *RoomAnnouncementMessage) RenderFor(u *User) string {
+	return aurora.Sprintf(aurora.Yellow("-> %s"), r.Body)
+}
+
 type PublicMessage struct {
 	*rawMessage
 	From *User
-	Room Room
+	Room string
 }
 
 func (p *PublicMessage) String() string {

@@ -3,6 +3,7 @@ module gosship
 go 1.16
 
 require (
+	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be // indirect
 	github.com/dgraph-io/badger/v3 v3.2011.1
 	github.com/gliderlabs/ssh v0.3.3-0.20210216161751-30ec06db4e74
