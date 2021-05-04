@@ -8,7 +8,6 @@ import (
 
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
-	"github.com/kyokomi/emoji/v2"
 	"github.com/logrusorgru/aurora/v3"
 	gossh "golang.org/x/crypto/ssh"
 )
@@ -90,7 +89,7 @@ func (u *User) WriteLine(line string) error {
 	if u.Dummy {
 		return ErrDummyUser
 	}
-	_, err := io.WriteString(u.Term, emoji.Sprint(line+"\n"))
+	_, err := io.WriteString(u.Term, line+"\n")
 	if err == io.EOF {
 		return nil
 	}

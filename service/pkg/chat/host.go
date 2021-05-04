@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/gliderlabs/ssh"
+	"github.com/kyokomi/emoji/v2"
 	"github.com/logrusorgru/aurora/v3"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -86,7 +87,7 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 		return fmt.Errorf("[%s] already logged in", u.Name)
 	}
 	defer h.RemoveUser(u.Name)
-	err = u.WriteLine(aurora.Sprintf("%s\n\n:unicorn:Welcome %s! You are now in room %s.\n", aurora.Green(title), aurora.Magenta(u.Name), aurora.Yellow(u.CurrentRoom)))
+	err = u.WriteLine(emoji.Sprintf("%s\n\n:unicorn:Welcome %s! You are now in room %s.\n", aurora.Green(title), aurora.Magenta(u.Name), aurora.Yellow(u.CurrentRoom)))
 	if err != nil {
 		return err
 	}

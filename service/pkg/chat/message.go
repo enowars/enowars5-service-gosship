@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/acarl005/stripansi"
+	"github.com/kyokomi/emoji/v2"
 	"github.com/logrusorgru/aurora/v3"
 )
 
@@ -38,6 +39,10 @@ func (m *rawMessage) RenderTimestamp() string {
 	return aurora.Sprintf(aurora.Gray(10, "["+m.Timestamp.Format("15:04")+"]"))
 }
 
+func (m *rawMessage) RenderBody() string {
+	return emoji.Sprint(m.Body)
+}
+
 type AnnouncementMessage struct {
 	*rawMessage
 }
@@ -51,7 +56,7 @@ func (a *AnnouncementMessage) String() string {
 }
 
 func (a *AnnouncementMessage) RenderFor(u *User) string {
-	return aurora.Sprintf("%s %s %s", a.rawMessage.RenderTimestamp(), aurora.Yellow("->"), a.Body)
+	return aurora.Sprintf("%s %s %s", a.rawMessage.RenderTimestamp(), aurora.Yellow("->"), a.rawMessage.RenderBody())
 }
 
 type RoomAnnouncementMessage struct {
@@ -71,7 +76,7 @@ func (r *RoomAnnouncementMessage) String() string {
 }
 
 func (r *RoomAnnouncementMessage) RenderFor(u *User) string {
-	return aurora.Sprintf("%s %s %s", r.rawMessage.RenderTimestamp(), aurora.Yellow("->"), r.Body)
+	return aurora.Sprintf("%s %s %s", r.rawMessage.RenderTimestamp(), aurora.Yellow("->"), r.rawMessage.RenderBody())
 }
 
 type PublicMessage struct {
@@ -99,7 +104,7 @@ func (p *PublicMessage) RenderFor(u *User) string {
 	} else {
 		userName = p.From.RenderName()
 	}
-	return aurora.Sprintf("%s[%s]: %s", p.rawMessage.RenderTimestamp(), userName, p.Body)
+	return aurora.Sprintf("%s[%s]: %s", p.rawMessage.RenderTimestamp(), userName, p.rawMessage.RenderBody())
 }
 
 type DirectMessage struct {
@@ -120,7 +125,7 @@ func (d *DirectMessage) RenderFor(u *User) string {
 	} else {
 		userName = d.From.RenderName()
 	}
-	return aurora.Sprintf("%s%s[%s]: %s", d.rawMessage.RenderTimestamp(), aurora.Yellow("[dm]"), userName, d.Body)
+	return aurora.Sprintf("%s%s[%s]: %s", d.rawMessage.RenderTimestamp(), aurora.Yellow("[dm]"), userName, d.rawMessage.RenderBody())
 }
 
 type CommandMessage struct {
