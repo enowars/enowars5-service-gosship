@@ -171,7 +171,7 @@ func (h *Host) Serve() {
 			msgEntry.From = v.From.Id
 			msgEntry.To = toId
 			skipSave = toId == ""
-			h.sendMessageToUser(v)
+			h.sendMessageToUser(v, toId)
 		case *CommandMessage:
 			skipSave = true
 			h.handleUserCommand(v)
@@ -225,13 +225,18 @@ func (h *Host) sendMessageToAllUsers(msg *AnnouncementMessage) {
 }
 
 func (h *Host) resolveUserNameToID(name string) string {
-	//TODO: use database to resolve username
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	if u, ok := h.users[name]; ok {
 		return u.Id
 	}
-	return ""
+	id, _, err := h.Database.FindUserByPredicate(func(entry *database.UserEntry) bool {
+		return entry.Name == name
+	})
+	if err != nil {
+		return ""
+	}
+	return id
 }
 
 func (h *Host) ConvertMessageEntryToMessage(me *database.MessageEntry) (Message, error) {
@@ -294,24 +299,34 @@ func (h *Host) ConvertMessageEntryToMessage(me *database.MessageEntry) (Message,
 	return nil, fmt.Errorf("invalid message type")
 }
 
-func (h *Host) sendMessageToUser(msg *DirectMessage) {
+func (h *Host) sendMessageToUser(msg *DirectMessage, toId string) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	to, ok := h.users[msg.To]
-	if !ok {
+	if !ok && toId == "" {
 		err := msg.From.WriteLine(aurora.Sprintf(aurora.Yellow("user %s not found on the server."), aurora.Red(msg.To)))
 		if err != nil {
 			h.Log.Error(err)
 		}
 		return
 	}
-	for _, u := range []*User{msg.From, to} {
+	recipients := []*User{msg.From}
+	if ok {
+		recipients = append(recipients, to)
+		to.LastDmRecipient = msg.From.Name
+	} else if toId != "" {
+		err := msg.From.WriteLine(aurora.Sprintf(aurora.Yellow("user %s is currently not online. the message still was sent and can be retrieved with the /history command."), aurora.Red(msg.To)))
+		if err != nil {
+			h.Log.Error(err)
+		}
+	}
+
+	for _, u := range recipients {
 		err := u.WriteMessage(msg)
 		if err != nil {
 			h.Log.Error(err)
 		}
 	}
-	to.LastDmRecipient = msg.From.Name
 }
 
 func (h *Host) handleUserCommand(msg *CommandMessage) {
