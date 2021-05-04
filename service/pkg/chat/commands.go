@@ -2,6 +2,7 @@ package chat
 
 import (
 	"fmt"
+	"gosship/pkg/database"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 )
@@ -114,7 +115,38 @@ var Commands = []*Command{
 		Args:   "[user]",
 		Help:   "show the direct message history",
 		Handler: func(h *Host, msg *CommandMessage) error {
-			return msg.From.WriteLine("TODO")
+			if len(msg.Args) == 0 {
+				return fmt.Errorf("user argument is missing")
+			}
+
+			uid, _, err := h.Database.FindUserByPredicate(func(entry *database.UserEntry) bool {
+				return entry.Name == msg.Args[0]
+			})
+			if err != nil {
+				h.Log.Error(err)
+				return fmt.Errorf("user not found")
+			}
+			if uid == "" {
+				return fmt.Errorf("user not found")
+			}
+
+			dms, err := h.Database.GetRecentDirectMessagesForUser(msg.From.Id, uid)
+			if err != nil {
+				return fmt.Errorf("messages not found")
+			}
+			for _, rawDm := range dms {
+				dm, err := h.ConvertMessageEntryToMessage(rawDm)
+				if err != nil {
+					h.Log.Error(err)
+					continue
+				}
+				err = msg.From.WriteMessage(dm)
+				if err != nil {
+					h.Log.Error(err)
+					return err
+				}
+			}
+			return nil
 		},
 	},
 }
