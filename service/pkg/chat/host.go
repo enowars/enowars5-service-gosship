@@ -234,7 +234,7 @@ func (h *Host) resolveUserNameToID(name string) string {
 
 func (h *Host) ConvertMessageEntryToMessage(me *database.MessageEntry) (Message, error) {
 	rm := &rawMessage{
-		Timestamp: me.Timestamp.AsTime(),
+		Timestamp: me.Timestamp.AsTime().Local(),
 		Body:      me.Body,
 	}
 	var from *User

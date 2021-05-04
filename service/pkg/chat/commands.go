@@ -76,8 +76,9 @@ var Commands = []*Command{
 		},
 	},
 	{
-		Prefix: "info",
-		Help:   "info about the logged-in user",
+		Prefix:  "info",
+		Aliases: []string{"i"},
+		Help:    "info about the logged-in user",
 		Handler: func(h *Host, msg *CommandMessage) error {
 			info := table.NewWriter()
 			info.AppendRow(table.Row{"Database ID", msg.From.Id})
@@ -95,9 +96,10 @@ var Commands = []*Command{
 		},
 	},
 	{
-		Prefix: "reply",
-		Args:   "[msg]",
-		Help:   "reply to your last direct message",
+		Prefix:  "reply",
+		Args:    "[msg]",
+		Aliases: []string{"r"},
+		Help:    "reply to your last direct message",
 		Handler: func(h *Host, msg *CommandMessage) error {
 			if msg.From.LastDmRecipient == "" {
 				return fmt.Errorf("no current message conversation")
