@@ -17,14 +17,15 @@ var ErrFingerprintAlreadyRegistered = errors.New("the public key is already used
 var ErrDummyUser = errors.New("user is a dummy")
 
 type User struct {
-	Id          string
-	Session     ssh.Session
-	Name        string
-	Term        *terminal.Terminal
-	CurrentRoom string
-	Fingerprint string
-	db          *database.Database
-	Dummy       bool
+	Id              string
+	Session         ssh.Session
+	Name            string
+	Term            *terminal.Terminal
+	CurrentRoom     string
+	Fingerprint     string
+	db              *database.Database
+	Dummy           bool
+	LastDmRecipient string
 }
 
 func NewUser(db *database.Database, session ssh.Session) (*User, error) {
