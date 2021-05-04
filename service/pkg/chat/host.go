@@ -86,7 +86,7 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 		return fmt.Errorf("[%s] already logged in", u.Name)
 	}
 	defer h.RemoveUser(u.Name)
-	err = u.WriteLine(aurora.Sprintf("%s\n\n🦄 Welcome %s! You are now in room %s.\n", aurora.Green(title), aurora.Magenta(u.Name), aurora.Yellow(u.CurrentRoom)))
+	err = u.WriteLine(aurora.Sprintf("%s\n\n:unicorn:Welcome %s! You are now in room %s.\n", aurora.Green(title), aurora.Magenta(u.Name), aurora.Yellow(u.CurrentRoom)))
 	if err != nil {
 		return err
 	}
@@ -224,6 +224,7 @@ func (h *Host) sendMessageToAllUsers(msg *AnnouncementMessage) {
 }
 
 func (h *Host) resolveUserNameToID(name string) string {
+	//TODO: use database to resolve username
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	if u, ok := h.users[name]; ok {
