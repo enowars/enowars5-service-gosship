@@ -178,6 +178,43 @@ func (db *Database) GetRecentMessagesForUserAndRoom(uid, room string) (MessageEn
 	return res, err
 }
 
+func (db *Database) GetRecentDirectMessagesForUser(selfId, uid string) (MessageEntries, error) {
+	res := make(MessageEntries, 0)
+	pastMarker := time.Now().Add(-24 * time.Hour)
+	err := db.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			if item.UserMeta() != TypeMessageEntry {
+				continue
+			}
+			var tmp MessageEntry
+			err := it.Item().Value(func(val []byte) error {
+				return proto.Unmarshal(val, &tmp)
+			})
+			if err != nil {
+				return err
+			}
+			if tmp.Type != MessageType_DIRECT {
+				continue
+			}
+			if tmp.Timestamp.AsTime().Before(pastMarker) {
+				continue
+			}
+			if (tmp.To == selfId && tmp.From == uid) || (tmp.From == selfId && tmp.To == uid) {
+				res = append(res, &tmp)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Sort(res)
+	return res, err
+}
+
 func (db *Database) GetUserById(id string) (*UserEntry, error) {
 	var ue UserEntry
 	err := db.db.View(func(txn *badger.Txn) error {

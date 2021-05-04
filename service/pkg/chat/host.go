@@ -95,7 +95,11 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 		return err
 	}
 	for _, oldMsg := range oldMessages {
-		conMsg, err := h.convertMessageEntryToMessage(oldMsg)
+		// skip dm history
+		if oldMsg.Type == database.MessageType_DIRECT {
+			continue
+		}
+		conMsg, err := h.ConvertMessageEntryToMessage(oldMsg)
 		if err != nil {
 			h.Log.Error(err)
 			continue
@@ -228,7 +232,7 @@ func (h *Host) resolveUserNameToID(name string) string {
 	return ""
 }
 
-func (h *Host) convertMessageEntryToMessage(me *database.MessageEntry) (Message, error) {
+func (h *Host) ConvertMessageEntryToMessage(me *database.MessageEntry) (Message, error) {
 	rm := &rawMessage{
 		Timestamp: me.Timestamp.AsTime(),
 		Body:      me.Body,
