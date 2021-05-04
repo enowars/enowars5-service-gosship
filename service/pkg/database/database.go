@@ -122,7 +122,6 @@ func (db *Database) FindUserByPredicate(predicate func(entry *UserEntry) bool) (
 }
 
 func (db *Database) AddMessageEntry(m *MessageEntry) error {
-	db.log.Println(m)
 	return db.addNewEntry(TypeMessageEntry, uuid.NewString(), m)
 }
 
