@@ -80,6 +80,14 @@ type PublicMessage struct {
 	Room string
 }
 
+func NewPublicMessage(body string, from *User) *PublicMessage {
+	return &PublicMessage{
+		rawMessage: newRawMessage(body),
+		From:       from,
+		Room:       from.CurrentRoom,
+	}
+}
+
 func (p *PublicMessage) String() string {
 	return fmt.Sprintf("PublicMessage[room=%s][from=%s]%s", p.Room, p.From.Name, p.rawMessage.String())
 }
@@ -163,9 +171,5 @@ func ParseMessage(m string, from *User) (Message, error) {
 		}
 		return NewCommandMessage(m, cmd, args[1:], from), nil
 	}
-	return &PublicMessage{
-		rawMessage: newRawMessage(m),
-		From:       from,
-		Room:       from.CurrentRoom,
-	}, nil
+	return NewPublicMessage(m, from), nil
 }

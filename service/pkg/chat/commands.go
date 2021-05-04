@@ -89,13 +89,6 @@ var Commands = []*Command{
 		},
 	},
 	{
-		Prefix: "rename",
-		Help:   "change your username",
-		Handler: func(h *Host, msg *CommandMessage) error {
-			return msg.From.WriteLine("TODO")
-		},
-	},
-	{
 		Prefix:  "reply",
 		Args:    "[msg]",
 		Aliases: []string{"r"},
@@ -136,6 +129,9 @@ var Commands = []*Command{
 			if err != nil {
 				return fmt.Errorf("messages not found")
 			}
+			if len(dms) == 0 {
+				return fmt.Errorf("no messages found")
+			}
 			for _, rawDm := range dms {
 				dm, err := h.ConvertMessageEntryToMessage(rawDm)
 				if err != nil {
@@ -149,6 +145,21 @@ var Commands = []*Command{
 				}
 			}
 			return nil
+		},
+	},
+	{
+		Prefix: "shrug",
+		Help:   "¯\\_(ツ)_/¯",
+		Handler: func(h *Host, msg *CommandMessage) error {
+			h.RouteMessage(NewPublicMessage("¯\\_(ツ)_/¯", msg.From))
+			return nil
+		},
+	},
+	{
+		Prefix: "rename",
+		Help:   "change your username",
+		Handler: func(h *Host, msg *CommandMessage) error {
+			return msg.From.WriteLine("TODO")
 		},
 	},
 }
