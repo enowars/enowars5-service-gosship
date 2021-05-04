@@ -123,7 +123,7 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 			_ = u.WriteLine(aurora.Sprintf(aurora.Red("error: %s"), err.Error()))
 			continue
 		}
-		h.msgChan <- parsedMessage
+		h.RouteMessage(parsedMessage)
 	}
 	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s left the room.", u.RenderName()))
 	return nil
@@ -305,7 +305,9 @@ func (h *Host) sendMessageToUser(msg *DirectMessage) {
 			h.Log.Error(err)
 		}
 	}
+	to.LastDmRecipient = msg.From.Name
 }
+
 func (h *Host) handleUserCommand(msg *CommandMessage) {
 	cmd := FindCommand(msg.Cmd)
 	if cmd == nil {
@@ -328,6 +330,10 @@ func (h *Host) Announcement(msg string) {
 
 func (h *Host) RoomAnnouncement(room, msg string) {
 	h.msgChan <- NewRoomAnnouncementMessage(room, msg)
+}
+
+func (h *Host) RouteMessage(msg Message) {
+	h.msgChan <- msg
 }
 
 func NewHost(log *logrus.Logger, db *database.Database) *Host {

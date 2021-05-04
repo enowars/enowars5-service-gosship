@@ -131,7 +131,7 @@ func NewCommandMessage(rawBody, cmd string, args []string, from *User) *CommandM
 
 func ParseDirectMessage(args []string, from *User) (Message, error) {
 	if len(args) < 2 {
-		return nil, fmt.Errorf("invalid direct message command")
+		return nil, fmt.Errorf("missing arguments")
 	}
 	if args[0] == from.Name {
 		return nil, fmt.Errorf("you cannot send a direct message to yourself")
@@ -150,9 +150,6 @@ func ParseMessage(m string, from *User) (Message, error) {
 		cmd := strings.ToLower(args[0])[1:]
 		if len(cmd) == 0 {
 			return nil, fmt.Errorf("invalid command")
-		}
-		if cmd == "dm" {
-			return ParseDirectMessage(args[1:], from)
 		}
 		return NewCommandMessage(m, cmd, args[1:], from), nil
 	}
