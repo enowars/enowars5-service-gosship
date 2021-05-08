@@ -19,6 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AdminServiceClient interface {
 	Auth(ctx context.Context, in *Auth_Request, opts ...grpc.CallOption) (*Auth_Response, error)
+	ResetUserFingerprint(ctx context.Context, in *ResetUserFingerprint_Request, opts ...grpc.CallOption) (*ResetUserFingerprint_Response, error)
 }
 
 type adminServiceClient struct {
@@ -38,11 +39,21 @@ func (c *adminServiceClient) Auth(ctx context.Context, in *Auth_Request, opts ..
 	return out, nil
 }
 
+func (c *adminServiceClient) ResetUserFingerprint(ctx context.Context, in *ResetUserFingerprint_Request, opts ...grpc.CallOption) (*ResetUserFingerprint_Response, error) {
+	out := new(ResetUserFingerprint_Response)
+	err := c.cc.Invoke(ctx, "/AdminService/ResetUserFingerprint", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AdminServiceServer is the server API for AdminService service.
 // All implementations must embed UnimplementedAdminServiceServer
 // for forward compatibility
 type AdminServiceServer interface {
 	Auth(context.Context, *Auth_Request) (*Auth_Response, error)
+	ResetUserFingerprint(context.Context, *ResetUserFingerprint_Request) (*ResetUserFingerprint_Response, error)
 	mustEmbedUnimplementedAdminServiceServer()
 }
 
@@ -52,6 +63,9 @@ type UnimplementedAdminServiceServer struct {
 
 func (UnimplementedAdminServiceServer) Auth(context.Context, *Auth_Request) (*Auth_Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Auth not implemented")
+}
+func (UnimplementedAdminServiceServer) ResetUserFingerprint(context.Context, *ResetUserFingerprint_Request) (*ResetUserFingerprint_Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ResetUserFingerprint not implemented")
 }
 func (UnimplementedAdminServiceServer) mustEmbedUnimplementedAdminServiceServer() {}
 
@@ -84,6 +98,24 @@ func _AdminService_Auth_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AdminService_ResetUserFingerprint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResetUserFingerprint_Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).ResetUserFingerprint(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/AdminService/ResetUserFingerprint",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).ResetUserFingerprint(ctx, req.(*ResetUserFingerprint_Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AdminService_ServiceDesc is the grpc.ServiceDesc for AdminService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -94,6 +126,10 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Auth",
 			Handler:    _AdminService_Auth_Handler,
+		},
+		{
+			MethodName: "ResetUserFingerprint",
+			Handler:    _AdminService_ResetUserFingerprint_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
