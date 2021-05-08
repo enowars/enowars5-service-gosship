@@ -4,6 +4,7 @@ import (
 	"gosship/pkg/chat"
 	"gosship/pkg/database"
 	"gosship/pkg/logger"
+	"gosship/pkg/rpc"
 	"gosship/pkg/utils"
 	"os"
 	"os/signal"
@@ -21,6 +22,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	log.Println("resetting database...")
+	db.ResetExceptConfig()
 
 	c := make(chan os.Signal)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -41,13 +45,21 @@ func main() {
 	h := chat.NewHost(log, db)
 	go h.Serve()
 
+	log.Println("starting grpc server...")
+	rpcServer := rpc.NewGRPCServer(log, db)
+	go rpcServer.Serve()
+
 	log.Println("starting ssh server...")
 	srv := &ssh.Server{
-		Addr:             ":2222",
+		Addr:             "localhost:2222",
 		Handler:          h.HandleNewSession,
 		HostSigners:      []ssh.Signer{signer},
 		Version:          "gosship",
 		PublicKeyHandler: h.HandlePublicKey,
+		ChannelHandlers: map[string]ssh.ChannelHandler{
+			"session": ssh.DefaultSessionHandler,
+			"rpc":     rpcServer.Handle,
+		},
 	}
 	log.Printf("listening on %s\n", srv.Addr)
 	err = srv.ListenAndServe()
