@@ -1,0 +1,16 @@
+syntax = "proto3";
+option go_package = "pkg/rpc/admin";
+
+message Auth {
+  message Request {
+    map<string, string> Config = 1;
+  }
+  message Response {
+    string Error = 1;
+    string SessionToken = 2;
+  }
+}
+
+service AdminService {
+  rpc Auth(Auth.Request) returns (Auth.Response);
+}
