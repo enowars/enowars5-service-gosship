@@ -3,7 +3,7 @@ option go_package = "pkg/rpc/admin";
 
 message Auth {
   message Request {
-    map<string, string> Config = 1;
+    string Password = 1;
   }
   message Response {
     string Error = 1;
@@ -11,6 +11,17 @@ message Auth {
   }
 }
 
+message ResetUserFingerprint {
+  message Request {
+    string SessionToken = 1;
+    string Username = 2;
+  }
+  message Response {
+    string Error = 1;
+  }
+}
+
 service AdminService {
   rpc Auth(Auth.Request) returns (Auth.Response);
+  rpc ResetUserFingerprint(ResetUserFingerprint.Request) returns (ResetUserFingerprint.Response);
 }
