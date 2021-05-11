@@ -140,6 +140,40 @@ func (db *Database) AddMessageEntry(m *MessageEntry) error {
 	return db.addNewEntry(TypeMessageEntry, uuid.NewString(), m)
 }
 
+func (db *Database) RenameUser(id, newUsername string) error {
+	userId, _, err := db.FindUserByPredicate(func(entry *UserEntry) bool {
+		return entry.Name == newUsername
+	})
+	if err != nil {
+		return err
+	}
+	if userId != "" {
+		return fmt.Errorf("username already taken")
+	}
+	return db.db.Update(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(id))
+		if err != nil {
+			return err
+		}
+		if item.UserMeta() != TypeUserEntry {
+			return fmt.Errorf("invlid database record type")
+		}
+		var tmp UserEntry
+		err = item.Value(func(val []byte) error {
+			return proto.Unmarshal(val, &tmp)
+		})
+		if err != nil {
+			return err
+		}
+		tmp.Name = newUsername
+		updatedVal, err := proto.Marshal(&tmp)
+		if err != nil {
+			return err
+		}
+		return txn.SetEntry(badger.NewEntry([]byte(id), updatedVal).WithMeta(TypeUserEntry))
+	})
+}
+
 type MessageEntries []*MessageEntry
 
 func (m MessageEntries) Len() int {
@@ -249,7 +283,7 @@ func (db *Database) GetUserById(id string) (*UserEntry, error) {
 	return &ue, nil
 }
 
-func (db *Database) Dump() {
+func (db *Database) DumpToLog() {
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()

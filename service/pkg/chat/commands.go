@@ -5,6 +5,7 @@ import (
 	"gosship/pkg/database"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/logrusorgru/aurora/v3"
 )
 
 type Command struct {
@@ -157,9 +158,24 @@ var Commands = []*Command{
 	},
 	{
 		Prefix: "rename",
+		Args:   "[new name]",
 		Help:   "change your username",
 		Handler: func(h *Host, msg *CommandMessage) error {
-			return msg.From.WriteLine("TODO")
+			if len(msg.Args) == 0 {
+				return fmt.Errorf("new name argument is missing")
+			}
+			newName := msg.Args[0]
+			if newName == msg.From.Name {
+				return fmt.Errorf("the new name is identical with your current name")
+			}
+			err := h.Database.RenameUser(msg.From.Id, newName)
+			if err != nil {
+				return err
+			}
+			h.RoomAnnouncement(msg.From.CurrentRoom, aurora.Sprintf("%s changed their name to %s", msg.From.RenderName(), aurora.Cyan(newName)))
+			msg.From.Name = newName
+			msg.From.UpdatePrompt()
+			return nil
 		},
 	},
 }
