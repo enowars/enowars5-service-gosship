@@ -9,7 +9,7 @@ import (
 )
 
 const randomPoolSize = 512
-const sessionTokenSize = 12
+const sessionTokenSize = 32
 
 var randomNumberPool []byte
 var pubKey ed25519.PublicKey

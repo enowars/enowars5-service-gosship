@@ -35,6 +35,7 @@ func run(signer ssh.Signer) error {
 	}
 	log.Printf("logged in with %s", token)
 	log.Println(adminClient.SendMessageToRoom("default", "hello from rpc :wave:"))
+
 	return nil
 }
 
@@ -49,11 +50,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for i := 0; i < 3; i++ {
-		err := run(signer)
-		if err != nil {
-			log.Fatal(err)
-		}
+	err = run(signer)
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	//_, privateKey, err := ed25519.GenerateKey(rand.Reader)
