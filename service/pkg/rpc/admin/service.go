@@ -32,10 +32,6 @@ func NewService(log *logrus.Logger, db *database.Database, host *chat.Host) *Ser
 	}
 }
 
-func (s *Service) PrepareForSession(sessionId string) {
-	s.log.Println(sessionId)
-}
-
 func (s *Service) GetAuthChallenge(ctx context.Context, request *GetAuthChallenge_Request) (*GetAuthChallenge_Response, error) {
 	id, challenge := auth.CreateAuthChallenge()
 	s.authChallengesMu.Lock()
