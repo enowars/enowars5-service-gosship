@@ -1,0 +1,8 @@
+version: '3'
+services:
+  gosship:
+    build: .
+    volumes:
+      - ./db/:/app/db:rw
+    ports:
+      - "2222:2222"
