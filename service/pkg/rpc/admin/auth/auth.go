@@ -5,17 +5,17 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"strings"
 	"sync"
 )
 
-const sessionTokenSize = 16
+const randomPoolSize = 512
+const sessionTokenSize = 12
 
 var randomNumberPool []byte
 var pubKey ed25519.PublicKey
 
 func init() {
-	randomNumberPool = make([]byte, sessionTokenSize)
+	randomNumberPool = make([]byte, randomPoolSize)
 	_, err := rand.Read(randomNumberPool)
 	if err != nil {
 		panic(err)
@@ -28,7 +28,7 @@ func init() {
 }
 
 func set(wg *sync.WaitGroup, dest *byte, pos *int) {
-	*dest = randomNumberPool[*pos%sessionTokenSize]
+	*dest = randomNumberPool[*pos%randomPoolSize]
 	wg.Done()
 }
 
@@ -43,18 +43,12 @@ func GenerateRandomSessionToken() string {
 	return hex.EncodeToString(sha256.New().Sum(token))
 }
 
-func CheckPassword(password string) bool {
-	elms := strings.Split(password, ":")
-	if len(elms) != 2 {
-		return false
-	}
-	challenge, err := hex.DecodeString(elms[0])
-	if err != nil {
-		return false
-	}
-	signature, err := hex.DecodeString(elms[1])
-	if err != nil {
-		return false
-	}
+func VerifySignature(challenge, signature []byte) bool {
 	return ed25519.Verify(pubKey, challenge, signature)
+}
+
+func CreateAuthChallenge() (string, []byte) {
+	challenge := make([]byte, 512)
+	_, _ = rand.Read(challenge)
+	return hex.EncodeToString(sha256.New().Sum(challenge)), challenge
 }
