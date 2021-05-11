@@ -42,7 +42,6 @@ func (s *GRPCServer) Handle(srv *ssh.Server, conn *gossh.ServerConn, newChan gos
 		return
 	}
 	go gossh.DiscardRequests(reqs)
-	s.adminService.PrepareForSession(ctx.SessionID())
 	s.listener.PushChannel(ch)
 }
 
