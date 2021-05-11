@@ -9,7 +9,7 @@ package admin
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	database "pkg/database"
+	database "gosship/pkg/database"
 	reflect "reflect"
 	sync "sync"
 )
