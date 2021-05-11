@@ -299,6 +299,35 @@ func (db *Database) Dump() {
 	}
 }
 
+func (db *Database) DumpMessages(emit func(*MessageEntry) error) error {
+	err := db.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			if item.UserMeta() != TypeMessageEntry {
+				continue
+			}
+			err := item.Value(func(val []byte) error {
+				var me MessageEntry
+				err := proto.Unmarshal(val, &me)
+				if err != nil {
+					return nil
+				}
+				return emit(&me)
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (db *Database) ResetExceptConfig() {
 	err := db.db.Update(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
