@@ -1,89 +1,40 @@
 package main
 
 import (
-	"context"
-	"crypto/ed25519"
-	"encoding/hex"
-	"errors"
-	"gosship/pkg/rpc/admin"
-	"gosship/pkg/sshnet"
+	"checker/pkg/client"
 	"log"
-	"net"
 	"os"
 
 	"golang.org/x/crypto/ssh"
-	"google.golang.org/grpc"
 )
 
-var privateKey ed25519.PrivateKey
-
-func init() {
-	privateKeyRaw, err := hex.DecodeString("215c8787c1b079be149db3da5e297a9b39ff008dee69b2b9f115d51d4547664580de0e58c0842f83cf95f9772a5a13c167dd4c0e3fd02913076d16df828fbbb2")
-	if err != nil {
-		panic(err)
-	}
-	privateKey = privateKeyRaw
-	log.Println("public key:", hex.EncodeToString(privateKey[32:]))
-}
-
-type AdminClient struct {
-	svc          admin.AdminServiceClient
-	sessionToken string
-}
-
-func NewAdminClient(svc admin.AdminServiceClient) *AdminClient {
-	return &AdminClient{svc: svc}
-}
-
-func (a *AdminClient) Auth() (string, error) {
-	authChallenge, err := a.svc.GetAuthChallenge(context.Background(), &admin.GetAuthChallenge_Request{})
-	if err != nil {
-		return "", err
-	}
-	if authChallenge.Error != "" {
-		return "", errors.New(authChallenge.Error)
-	}
-
-	res, err := a.svc.Auth(context.Background(), &admin.Auth_Request{
-		ChallengeId: authChallenge.ChallengeId,
-		Signature:   ed25519.Sign(privateKey, authChallenge.Challenge),
-	})
-	if err != nil {
-		return "", err
-	}
-	if res.Error != "" {
-		return "", errors.New(res.Error)
-	}
-	a.sessionToken = res.SessionToken
-	return res.SessionToken, nil
-}
-
-func (a *AdminClient) UpdateUserFingerprint(username, fingerprint string) error {
-	res, err := a.svc.UpdateUserFingerprint(context.Background(), &admin.UpdateUserFingerprint_Request{
-		SessionToken: a.sessionToken,
-		Username:     username,
-		Fingerprint:  fingerprint,
-	})
+func run(signer ssh.Signer) error {
+	sshClient, err := client.GetSSHClient(signer)
 	if err != nil {
 		return err
 	}
-	if res.Error != "" {
-		return errors.New(res.Error)
-	}
-	return nil
-}
-func (a *AdminClient) SendMessageToRoom(room, message string) error {
-	res, err := a.svc.SendMessageToRoom(context.Background(), &admin.SendMessageToRoom_Request{
-		SessionToken: a.sessionToken,
-		Room:         room,
-		Message:      message,
-	})
+	defer sshClient.Close()
+
+	rpcChannel, err := client.OpenRPCChannel(sshClient)
 	if err != nil {
 		return err
 	}
-	if res.Error != "" {
-		return errors.New(res.Error)
+	defer rpcChannel.Close()
+
+	grpcConn, err := client.CreateNewGRPCClient(rpcChannel)
+	if err != nil {
+		return err
 	}
+	defer grpcConn.Close()
+
+	adminClient := client.NewAdminClient(grpcConn)
+
+	token, err := adminClient.Auth()
+	if err != nil {
+		return err
+	}
+	log.Printf("logged in with %s", token)
+	log.Println(adminClient.SendMessageToRoom("default", "hello from rpc :wave:"))
 	return nil
 }
 
@@ -98,47 +49,17 @@ func main() {
 		log.Fatal(err)
 	}
 
+	for i := 0; i < 3; i++ {
+		err := run(signer)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	//_, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	//if err != nil {
 	//	log.Fatal(err)
 	//}
-
-	client, err := ssh.Dial("tcp", "127.0.0.1:2222", &ssh.ClientConfig{
-		Config:          ssh.Config{},
-		User:            "client",
-		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// RPC test
-	channel, reqs, err := client.OpenChannel("rpc", nil)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	go ssh.DiscardRequests(reqs)
-
-	defer channel.Close()
-	grpcConn, err := grpc.Dial("", grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
-		return &sshnet.Conn{Channel: channel}, nil
-	}), grpc.WithInsecure())
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer grpcConn.Close()
-	adminClient := NewAdminClient(admin.NewAdminServiceClient(grpcConn))
-	token, err := adminClient.Auth()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	log.Println(token)
-	log.Println(adminClient.UpdateUserFingerprint("chris", "SHA256:GLk/mTXZktyg18DbFzQdbl3dTFG4YHlO48HckkyJSt4"))
-	log.Println(adminClient.SendMessageToRoom("default", "hello from the rpc interface"))
 
 	// session stuff
 	//session, err := client.NewSession()
