@@ -3,6 +3,9 @@ services:
   gosship:
     build: .
     volumes:
-      - ./db/:/app/db:rw
+      - db-data:/app/db
     ports:
       - "2222:2222"
+
+volumes:
+  db-data:

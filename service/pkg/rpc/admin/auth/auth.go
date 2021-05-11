@@ -40,7 +40,9 @@ func GenerateRandomSessionToken() string {
 		go set(&wg, &token[i], &i)
 	}
 	wg.Wait()
-	return hex.EncodeToString(sha256.New().Sum(token))
+	tokenHash := sha256.New()
+	tokenHash.Write(token)
+	return hex.EncodeToString(tokenHash.Sum(nil))
 }
 
 func VerifySignature(challenge, signature []byte) bool {
@@ -50,5 +52,7 @@ func VerifySignature(challenge, signature []byte) bool {
 func CreateAuthChallenge() (string, []byte) {
 	challenge := make([]byte, 512)
 	_, _ = rand.Read(challenge)
-	return hex.EncodeToString(sha256.New().Sum(challenge)), challenge
+	challengeId := sha256.New()
+	challengeId.Write(challenge)
+	return hex.EncodeToString(challengeId.Sum(nil)), challenge
 }
