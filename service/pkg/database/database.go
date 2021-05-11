@@ -121,6 +121,21 @@ func (db *Database) FindUserByPredicate(predicate func(entry *UserEntry) bool) (
 	return usedId, ue, nil
 }
 
+func (db *Database) UpdateUserFingerprint(username, fingerprint string) error {
+	db.log.Printf("updating fingerprint for user: %s\n", username)
+	userId, userEntry, err := db.FindUserByPredicate(func(entry *UserEntry) bool {
+		return entry.Name == username
+	})
+	if err != nil {
+		return err
+	}
+	if userId == "" {
+		return fmt.Errorf("user %s not found", username)
+	}
+	userEntry.Fingerprint = fingerprint
+	return db.addNewEntry(TypeUserEntry, userId, userEntry)
+}
+
 func (db *Database) AddMessageEntry(m *MessageEntry) error {
 	return db.addNewEntry(TypeMessageEntry, uuid.NewString(), m)
 }
