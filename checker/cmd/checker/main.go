@@ -34,8 +34,10 @@ func run(signer ssh.Signer) error {
 		return err
 	}
 	log.Printf("logged in with %s", token)
-	log.Println(adminClient.SendMessageToRoom("default", "hello from rpc :wave:"))
-
+	err = adminClient.SendMessageToRoom("default", "hello from rpc :wave:")
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

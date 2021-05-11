@@ -4,8 +4,9 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/hex"
-	"errors"
+	"gosship/pkg/database"
 	"gosship/pkg/rpc/admin"
+	"io"
 
 	"google.golang.org/grpc"
 )
@@ -34,9 +35,6 @@ func (a *AdminClient) Auth() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if authChallenge.Error != "" {
-		return "", errors.New(authChallenge.Error)
-	}
 
 	res, err := a.svc.Auth(context.Background(), &admin.Auth_Request{
 		ChallengeId: authChallenge.ChallengeId,
@@ -45,15 +43,12 @@ func (a *AdminClient) Auth() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if res.Error != "" {
-		return "", errors.New(res.Error)
-	}
 	a.SessionToken = res.SessionToken
 	return res.SessionToken, nil
 }
 
 func (a *AdminClient) UpdateUserFingerprint(username, fingerprint string) error {
-	res, err := a.svc.UpdateUserFingerprint(context.Background(), &admin.UpdateUserFingerprint_Request{
+	_, err := a.svc.UpdateUserFingerprint(context.Background(), &admin.UpdateUserFingerprint_Request{
 		SessionToken: a.SessionToken,
 		Username:     username,
 		Fingerprint:  fingerprint,
@@ -61,13 +56,10 @@ func (a *AdminClient) UpdateUserFingerprint(username, fingerprint string) error 
 	if err != nil {
 		return err
 	}
-	if res.Error != "" {
-		return errors.New(res.Error)
-	}
 	return nil
 }
 func (a *AdminClient) SendMessageToRoom(room, message string) error {
-	res, err := a.svc.SendMessageToRoom(context.Background(), &admin.SendMessageToRoom_Request{
+	_, err := a.svc.SendMessageToRoom(context.Background(), &admin.SendMessageToRoom_Request{
 		SessionToken: a.SessionToken,
 		Room:         room,
 		Message:      message,
@@ -75,8 +67,23 @@ func (a *AdminClient) SendMessageToRoom(room, message string) error {
 	if err != nil {
 		return err
 	}
-	if res.Error != "" {
-		return errors.New(res.Error)
+	return nil
+}
+
+func (a *AdminClient) DumpMessages(emit func(entry *database.MessageEntry)) error {
+	stream, err := a.svc.DumpMessages(context.Background(), &admin.DumpMessages_Request{SessionToken: a.SessionToken})
+	if err != nil {
+		return err
+	}
+	for {
+		res, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		emit(res.Message)
 	}
 	return nil
 }

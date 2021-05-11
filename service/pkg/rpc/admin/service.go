@@ -89,13 +89,17 @@ func (s *Service) UpdateUserFingerprint(ctx context.Context, request *UpdateUser
 
 func (s *Service) SendMessageToRoom(ctx context.Context, request *SendMessageToRoom_Request) (*SendMessageToRoom_Response, error) {
 	if err := s.checkSession(request.SessionToken); err != nil {
-		return nil, nil
+		return nil, err
 	}
 	s.host.RoomAnnouncement(request.Room, request.Message)
 	return &SendMessageToRoom_Response{}, nil
 }
 
 func (s *Service) DumpMessages(request *DumpMessages_Request, server AdminService_DumpMessagesServer) error {
-	//server.Send()
-	return nil
+	if err := s.checkSession(request.SessionToken); err != nil {
+		return err
+	}
+	return s.db.DumpMessages(func(entry *database.MessageEntry) error {
+		return server.Send(&DumpMessages_Response{Message: entry})
+	})
 }
