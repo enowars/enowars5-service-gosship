@@ -20,6 +20,44 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type GetAuthChallenge struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *GetAuthChallenge) Reset() {
+	*x = GetAuthChallenge{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_pkg_rpc_admin_service_proto_msgTypes[0]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetAuthChallenge) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAuthChallenge) ProtoMessage() {}
+
+func (x *GetAuthChallenge) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_admin_service_proto_msgTypes[0]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAuthChallenge.ProtoReflect.Descriptor instead.
+func (*GetAuthChallenge) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{0}
+}
+
 type Auth struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -29,7 +67,7 @@ type Auth struct {
 func (x *Auth) Reset() {
 	*x = Auth{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_rpc_admin_service_proto_msgTypes[0]
+		mi := &file_pkg_rpc_admin_service_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -42,7 +80,7 @@ func (x *Auth) String() string {
 func (*Auth) ProtoMessage() {}
 
 func (x *Auth) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_rpc_admin_service_proto_msgTypes[0]
+	mi := &file_pkg_rpc_admin_service_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,32 +93,32 @@ func (x *Auth) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Auth.ProtoReflect.Descriptor instead.
 func (*Auth) Descriptor() ([]byte, []int) {
-	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{0}
+	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{1}
 }
 
-type ResetUserFingerprint struct {
+type UpdateUserFingerprint struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 }
 
-func (x *ResetUserFingerprint) Reset() {
-	*x = ResetUserFingerprint{}
+func (x *UpdateUserFingerprint) Reset() {
+	*x = UpdateUserFingerprint{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_rpc_admin_service_proto_msgTypes[1]
+		mi := &file_pkg_rpc_admin_service_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *ResetUserFingerprint) String() string {
+func (x *UpdateUserFingerprint) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ResetUserFingerprint) ProtoMessage() {}
+func (*UpdateUserFingerprint) ProtoMessage() {}
 
-func (x *ResetUserFingerprint) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_rpc_admin_service_proto_msgTypes[1]
+func (x *UpdateUserFingerprint) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_admin_service_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -91,9 +129,148 @@ func (x *ResetUserFingerprint) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ResetUserFingerprint.ProtoReflect.Descriptor instead.
-func (*ResetUserFingerprint) Descriptor() ([]byte, []int) {
-	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{1}
+// Deprecated: Use UpdateUserFingerprint.ProtoReflect.Descriptor instead.
+func (*UpdateUserFingerprint) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{2}
+}
+
+type SendMessageToRoom struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *SendMessageToRoom) Reset() {
+	*x = SendMessageToRoom{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_pkg_rpc_admin_service_proto_msgTypes[3]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SendMessageToRoom) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendMessageToRoom) ProtoMessage() {}
+
+func (x *SendMessageToRoom) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_admin_service_proto_msgTypes[3]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendMessageToRoom.ProtoReflect.Descriptor instead.
+func (*SendMessageToRoom) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{3}
+}
+
+type GetAuthChallenge_Request struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *GetAuthChallenge_Request) Reset() {
+	*x = GetAuthChallenge_Request{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_pkg_rpc_admin_service_proto_msgTypes[4]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetAuthChallenge_Request) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAuthChallenge_Request) ProtoMessage() {}
+
+func (x *GetAuthChallenge_Request) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_admin_service_proto_msgTypes[4]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAuthChallenge_Request.ProtoReflect.Descriptor instead.
+func (*GetAuthChallenge_Request) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{0, 0}
+}
+
+type GetAuthChallenge_Response struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Error       string `protobuf:"bytes,1,opt,name=Error,proto3" json:"Error,omitempty"`
+	ChallengeId string `protobuf:"bytes,2,opt,name=ChallengeId,proto3" json:"ChallengeId,omitempty"`
+	Challenge   []byte `protobuf:"bytes,3,opt,name=Challenge,proto3" json:"Challenge,omitempty"`
+}
+
+func (x *GetAuthChallenge_Response) Reset() {
+	*x = GetAuthChallenge_Response{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_pkg_rpc_admin_service_proto_msgTypes[5]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *GetAuthChallenge_Response) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAuthChallenge_Response) ProtoMessage() {}
+
+func (x *GetAuthChallenge_Response) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_admin_service_proto_msgTypes[5]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAuthChallenge_Response.ProtoReflect.Descriptor instead.
+func (*GetAuthChallenge_Response) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{0, 1}
+}
+
+func (x *GetAuthChallenge_Response) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *GetAuthChallenge_Response) GetChallengeId() string {
+	if x != nil {
+		return x.ChallengeId
+	}
+	return ""
+}
+
+func (x *GetAuthChallenge_Response) GetChallenge() []byte {
+	if x != nil {
+		return x.Challenge
+	}
+	return nil
 }
 
 type Auth_Request struct {
@@ -101,13 +278,14 @@ type Auth_Request struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Password string `protobuf:"bytes,1,opt,name=Password,proto3" json:"Password,omitempty"`
+	ChallengeId string `protobuf:"bytes,1,opt,name=ChallengeId,proto3" json:"ChallengeId,omitempty"`
+	Signature   []byte `protobuf:"bytes,2,opt,name=Signature,proto3" json:"Signature,omitempty"`
 }
 
 func (x *Auth_Request) Reset() {
 	*x = Auth_Request{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_rpc_admin_service_proto_msgTypes[2]
+		mi := &file_pkg_rpc_admin_service_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -120,7 +298,7 @@ func (x *Auth_Request) String() string {
 func (*Auth_Request) ProtoMessage() {}
 
 func (x *Auth_Request) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_rpc_admin_service_proto_msgTypes[2]
+	mi := &file_pkg_rpc_admin_service_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -133,14 +311,21 @@ func (x *Auth_Request) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Auth_Request.ProtoReflect.Descriptor instead.
 func (*Auth_Request) Descriptor() ([]byte, []int) {
-	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{0, 0}
+	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{1, 0}
 }
 
-func (x *Auth_Request) GetPassword() string {
+func (x *Auth_Request) GetChallengeId() string {
 	if x != nil {
-		return x.Password
+		return x.ChallengeId
 	}
 	return ""
+}
+
+func (x *Auth_Request) GetSignature() []byte {
+	if x != nil {
+		return x.Signature
+	}
+	return nil
 }
 
 type Auth_Response struct {
@@ -155,7 +340,7 @@ type Auth_Response struct {
 func (x *Auth_Response) Reset() {
 	*x = Auth_Response{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_rpc_admin_service_proto_msgTypes[3]
+		mi := &file_pkg_rpc_admin_service_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -168,7 +353,7 @@ func (x *Auth_Response) String() string {
 func (*Auth_Response) ProtoMessage() {}
 
 func (x *Auth_Response) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_rpc_admin_service_proto_msgTypes[3]
+	mi := &file_pkg_rpc_admin_service_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -181,7 +366,7 @@ func (x *Auth_Response) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Auth_Response.ProtoReflect.Descriptor instead.
 func (*Auth_Response) Descriptor() ([]byte, []int) {
-	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{0, 1}
+	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{1, 1}
 }
 
 func (x *Auth_Response) GetError() string {
@@ -198,32 +383,33 @@ func (x *Auth_Response) GetSessionToken() string {
 	return ""
 }
 
-type ResetUserFingerprint_Request struct {
+type UpdateUserFingerprint_Request struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
 	SessionToken string `protobuf:"bytes,1,opt,name=SessionToken,proto3" json:"SessionToken,omitempty"`
 	Username     string `protobuf:"bytes,2,opt,name=Username,proto3" json:"Username,omitempty"`
+	Fingerprint  string `protobuf:"bytes,3,opt,name=Fingerprint,proto3" json:"Fingerprint,omitempty"`
 }
 
-func (x *ResetUserFingerprint_Request) Reset() {
-	*x = ResetUserFingerprint_Request{}
+func (x *UpdateUserFingerprint_Request) Reset() {
+	*x = UpdateUserFingerprint_Request{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_rpc_admin_service_proto_msgTypes[4]
+		mi := &file_pkg_rpc_admin_service_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *ResetUserFingerprint_Request) String() string {
+func (x *UpdateUserFingerprint_Request) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ResetUserFingerprint_Request) ProtoMessage() {}
+func (*UpdateUserFingerprint_Request) ProtoMessage() {}
 
-func (x *ResetUserFingerprint_Request) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_rpc_admin_service_proto_msgTypes[4]
+func (x *UpdateUserFingerprint_Request) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_admin_service_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -234,26 +420,33 @@ func (x *ResetUserFingerprint_Request) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ResetUserFingerprint_Request.ProtoReflect.Descriptor instead.
-func (*ResetUserFingerprint_Request) Descriptor() ([]byte, []int) {
-	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{1, 0}
+// Deprecated: Use UpdateUserFingerprint_Request.ProtoReflect.Descriptor instead.
+func (*UpdateUserFingerprint_Request) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{2, 0}
 }
 
-func (x *ResetUserFingerprint_Request) GetSessionToken() string {
+func (x *UpdateUserFingerprint_Request) GetSessionToken() string {
 	if x != nil {
 		return x.SessionToken
 	}
 	return ""
 }
 
-func (x *ResetUserFingerprint_Request) GetUsername() string {
+func (x *UpdateUserFingerprint_Request) GetUsername() string {
 	if x != nil {
 		return x.Username
 	}
 	return ""
 }
 
-type ResetUserFingerprint_Response struct {
+func (x *UpdateUserFingerprint_Request) GetFingerprint() string {
+	if x != nil {
+		return x.Fingerprint
+	}
+	return ""
+}
+
+type UpdateUserFingerprint_Response struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -261,23 +454,23 @@ type ResetUserFingerprint_Response struct {
 	Error string `protobuf:"bytes,1,opt,name=Error,proto3" json:"Error,omitempty"`
 }
 
-func (x *ResetUserFingerprint_Response) Reset() {
-	*x = ResetUserFingerprint_Response{}
+func (x *UpdateUserFingerprint_Response) Reset() {
+	*x = UpdateUserFingerprint_Response{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_rpc_admin_service_proto_msgTypes[5]
+		mi := &file_pkg_rpc_admin_service_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *ResetUserFingerprint_Response) String() string {
+func (x *UpdateUserFingerprint_Response) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ResetUserFingerprint_Response) ProtoMessage() {}
+func (*UpdateUserFingerprint_Response) ProtoMessage() {}
 
-func (x *ResetUserFingerprint_Response) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_rpc_admin_service_proto_msgTypes[5]
+func (x *UpdateUserFingerprint_Response) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_admin_service_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -288,12 +481,122 @@ func (x *ResetUserFingerprint_Response) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ResetUserFingerprint_Response.ProtoReflect.Descriptor instead.
-func (*ResetUserFingerprint_Response) Descriptor() ([]byte, []int) {
-	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{1, 1}
+// Deprecated: Use UpdateUserFingerprint_Response.ProtoReflect.Descriptor instead.
+func (*UpdateUserFingerprint_Response) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{2, 1}
 }
 
-func (x *ResetUserFingerprint_Response) GetError() string {
+func (x *UpdateUserFingerprint_Response) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type SendMessageToRoom_Request struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	SessionToken string `protobuf:"bytes,1,opt,name=SessionToken,proto3" json:"SessionToken,omitempty"`
+	Room         string `protobuf:"bytes,2,opt,name=Room,proto3" json:"Room,omitempty"`
+	Message      string `protobuf:"bytes,3,opt,name=Message,proto3" json:"Message,omitempty"`
+}
+
+func (x *SendMessageToRoom_Request) Reset() {
+	*x = SendMessageToRoom_Request{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_pkg_rpc_admin_service_proto_msgTypes[10]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SendMessageToRoom_Request) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendMessageToRoom_Request) ProtoMessage() {}
+
+func (x *SendMessageToRoom_Request) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_admin_service_proto_msgTypes[10]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendMessageToRoom_Request.ProtoReflect.Descriptor instead.
+func (*SendMessageToRoom_Request) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{3, 0}
+}
+
+func (x *SendMessageToRoom_Request) GetSessionToken() string {
+	if x != nil {
+		return x.SessionToken
+	}
+	return ""
+}
+
+func (x *SendMessageToRoom_Request) GetRoom() string {
+	if x != nil {
+		return x.Room
+	}
+	return ""
+}
+
+func (x *SendMessageToRoom_Request) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type SendMessageToRoom_Response struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Error string `protobuf:"bytes,1,opt,name=Error,proto3" json:"Error,omitempty"`
+}
+
+func (x *SendMessageToRoom_Response) Reset() {
+	*x = SendMessageToRoom_Response{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_pkg_rpc_admin_service_proto_msgTypes[11]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *SendMessageToRoom_Response) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendMessageToRoom_Response) ProtoMessage() {}
+
+func (x *SendMessageToRoom_Response) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_rpc_admin_service_proto_msgTypes[11]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendMessageToRoom_Response.ProtoReflect.Descriptor instead.
+func (*SendMessageToRoom_Response) Descriptor() ([]byte, []int) {
+	return file_pkg_rpc_admin_service_proto_rawDescGZIP(), []int{3, 1}
+}
+
+func (x *SendMessageToRoom_Response) GetError() string {
 	if x != nil {
 		return x.Error
 	}
@@ -304,33 +607,65 @@ var File_pkg_rpc_admin_service_proto protoreflect.FileDescriptor
 
 var file_pkg_rpc_admin_service_proto_rawDesc = []byte{
 	0x0a, 0x1b, 0x70, 0x6b, 0x67, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61, 0x64, 0x6d, 0x69, 0x6e, 0x2f,
-	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x73, 0x0a,
-	0x04, 0x41, 0x75, 0x74, 0x68, 0x1a, 0x25, 0x0a, 0x07, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x12, 0x1a, 0x0a, 0x08, 0x50, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x18, 0x01, 0x20, 0x01,
-	0x28, 0x09, 0x52, 0x08, 0x50, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x1a, 0x44, 0x0a, 0x08,
+	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x7f, 0x0a,
+	0x10, 0x47, 0x65, 0x74, 0x41, 0x75, 0x74, 0x68, 0x43, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e, 0x67,
+	0x65, 0x1a, 0x09, 0x0a, 0x07, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x60, 0x0a, 0x08,
 	0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x45, 0x72, 0x72, 0x6f,
-	0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x12, 0x22,
-	0x0a, 0x0c, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x02,
-	0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x6b,
-	0x65, 0x6e, 0x22, 0x83, 0x01, 0x0a, 0x14, 0x52, 0x65, 0x73, 0x65, 0x74, 0x55, 0x73, 0x65, 0x72,
-	0x46, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e, 0x74, 0x1a, 0x49, 0x0a, 0x07, 0x52,
-	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x22, 0x0a, 0x0c, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f,
-	0x6e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x53, 0x65,
-	0x73, 0x73, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x12, 0x1a, 0x0a, 0x08, 0x55, 0x73,
-	0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x55, 0x73,
-	0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x1a, 0x20, 0x0a, 0x08, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
-	0x73, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x05, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x32, 0x8c, 0x01, 0x0a, 0x0c, 0x41, 0x64, 0x6d,
-	0x69, 0x6e, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x25, 0x0a, 0x04, 0x41, 0x75, 0x74,
-	0x68, 0x12, 0x0d, 0x2e, 0x41, 0x75, 0x74, 0x68, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x1a, 0x0e, 0x2e, 0x41, 0x75, 0x74, 0x68, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
-	0x12, 0x55, 0x0a, 0x14, 0x52, 0x65, 0x73, 0x65, 0x74, 0x55, 0x73, 0x65, 0x72, 0x46, 0x69, 0x6e,
-	0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e, 0x74, 0x12, 0x1d, 0x2e, 0x52, 0x65, 0x73, 0x65, 0x74,
-	0x55, 0x73, 0x65, 0x72, 0x46, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e, 0x74, 0x2e,
-	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1e, 0x2e, 0x52, 0x65, 0x73, 0x65, 0x74, 0x55,
-	0x73, 0x65, 0x72, 0x46, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e, 0x74, 0x2e, 0x52,
-	0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x0f, 0x5a, 0x0d, 0x70, 0x6b, 0x67, 0x2f, 0x72,
-	0x70, 0x63, 0x2f, 0x61, 0x64, 0x6d, 0x69, 0x6e, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x12, 0x20,
+	0x0a, 0x0b, 0x43, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e, 0x67, 0x65, 0x49, 0x64, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x0b, 0x43, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e, 0x67, 0x65, 0x49, 0x64,
+	0x12, 0x1c, 0x0a, 0x09, 0x43, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e, 0x67, 0x65, 0x18, 0x03, 0x20,
+	0x01, 0x28, 0x0c, 0x52, 0x09, 0x43, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e, 0x67, 0x65, 0x22, 0x97,
+	0x01, 0x0a, 0x04, 0x41, 0x75, 0x74, 0x68, 0x1a, 0x49, 0x0a, 0x07, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x12, 0x20, 0x0a, 0x0b, 0x43, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e, 0x67, 0x65, 0x49,
+	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x43, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e,
+	0x67, 0x65, 0x49, 0x64, 0x12, 0x1c, 0x0a, 0x09, 0x53, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75, 0x72,
+	0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x09, 0x53, 0x69, 0x67, 0x6e, 0x61, 0x74, 0x75,
+	0x72, 0x65, 0x1a, 0x44, 0x0a, 0x08, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14,
+	0x0a, 0x05, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x45,
+	0x72, 0x72, 0x6f, 0x72, 0x12, 0x22, 0x0a, 0x0c, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x54,
+	0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x53, 0x65, 0x73, 0x73,
+	0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x22, 0xa6, 0x01, 0x0a, 0x15, 0x55, 0x70, 0x64,
+	0x61, 0x74, 0x65, 0x55, 0x73, 0x65, 0x72, 0x46, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69,
+	0x6e, 0x74, 0x1a, 0x6b, 0x0a, 0x07, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x22, 0x0a,
+	0x0c, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x18, 0x01, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x0c, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x6b, 0x65,
+	0x6e, 0x12, 0x1a, 0x0a, 0x08, 0x55, 0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x08, 0x55, 0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x20, 0x0a,
+	0x0b, 0x46, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e, 0x74, 0x18, 0x03, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x0b, 0x46, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e, 0x74, 0x1a,
+	0x20, 0x0a, 0x08, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14, 0x0a, 0x05, 0x45,
+	0x72, 0x72, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x45, 0x72, 0x72, 0x6f,
+	0x72, 0x22, 0x92, 0x01, 0x0a, 0x11, 0x53, 0x65, 0x6e, 0x64, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67,
+	0x65, 0x54, 0x6f, 0x52, 0x6f, 0x6f, 0x6d, 0x1a, 0x5b, 0x0a, 0x07, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x12, 0x22, 0x0a, 0x0c, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x6b,
+	0x65, 0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f,
+	0x6e, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x12, 0x12, 0x0a, 0x04, 0x52, 0x6f, 0x6f, 0x6d, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x52, 0x6f, 0x6f, 0x6d, 0x12, 0x18, 0x0a, 0x07, 0x4d, 0x65,
+	0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x4d, 0x65, 0x73,
+	0x73, 0x61, 0x67, 0x65, 0x1a, 0x20, 0x0a, 0x08, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65,
+	0x12, 0x14, 0x0a, 0x05, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x05, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x32, 0xa8, 0x02, 0x0a, 0x0c, 0x41, 0x64, 0x6d, 0x69, 0x6e,
+	0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x12, 0x49, 0x0a, 0x10, 0x47, 0x65, 0x74, 0x41, 0x75,
+	0x74, 0x68, 0x43, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e, 0x67, 0x65, 0x12, 0x19, 0x2e, 0x47, 0x65,
+	0x74, 0x41, 0x75, 0x74, 0x68, 0x43, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e, 0x67, 0x65, 0x2e, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1a, 0x2e, 0x47, 0x65, 0x74, 0x41, 0x75, 0x74, 0x68,
+	0x43, 0x68, 0x61, 0x6c, 0x6c, 0x65, 0x6e, 0x67, 0x65, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e,
+	0x73, 0x65, 0x12, 0x25, 0x0a, 0x04, 0x41, 0x75, 0x74, 0x68, 0x12, 0x0d, 0x2e, 0x41, 0x75, 0x74,
+	0x68, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x0e, 0x2e, 0x41, 0x75, 0x74, 0x68,
+	0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x58, 0x0a, 0x15, 0x55, 0x70, 0x64,
+	0x61, 0x74, 0x65, 0x55, 0x73, 0x65, 0x72, 0x46, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69,
+	0x6e, 0x74, 0x12, 0x1e, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x55, 0x73, 0x65, 0x72, 0x46,
+	0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e, 0x74, 0x2e, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x1f, 0x2e, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x55, 0x73, 0x65, 0x72, 0x46,
+	0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e, 0x74, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x12, 0x4c, 0x0a, 0x11, 0x53, 0x65, 0x6e, 0x64, 0x4d, 0x65, 0x73, 0x73, 0x61,
+	0x67, 0x65, 0x54, 0x6f, 0x52, 0x6f, 0x6f, 0x6d, 0x12, 0x1a, 0x2e, 0x53, 0x65, 0x6e, 0x64, 0x4d,
+	0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x54, 0x6f, 0x52, 0x6f, 0x6f, 0x6d, 0x2e, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x1b, 0x2e, 0x53, 0x65, 0x6e, 0x64, 0x4d, 0x65, 0x73, 0x73, 0x61,
+	0x67, 0x65, 0x54, 0x6f, 0x52, 0x6f, 0x6f, 0x6d, 0x2e, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
+	0x65, 0x42, 0x0f, 0x5a, 0x0d, 0x70, 0x6b, 0x67, 0x2f, 0x72, 0x70, 0x63, 0x2f, 0x61, 0x64, 0x6d,
+	0x69, 0x6e, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -345,25 +680,35 @@ func file_pkg_rpc_admin_service_proto_rawDescGZIP() []byte {
 	return file_pkg_rpc_admin_service_proto_rawDescData
 }
 
-var file_pkg_rpc_admin_service_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_pkg_rpc_admin_service_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_pkg_rpc_admin_service_proto_goTypes = []interface{}{
-	(*Auth)(nil),                          // 0: Auth
-	(*ResetUserFingerprint)(nil),          // 1: ResetUserFingerprint
-	(*Auth_Request)(nil),                  // 2: Auth.Request
-	(*Auth_Response)(nil),                 // 3: Auth.Response
-	(*ResetUserFingerprint_Request)(nil),  // 4: ResetUserFingerprint.Request
-	(*ResetUserFingerprint_Response)(nil), // 5: ResetUserFingerprint.Response
+	(*GetAuthChallenge)(nil),               // 0: GetAuthChallenge
+	(*Auth)(nil),                           // 1: Auth
+	(*UpdateUserFingerprint)(nil),          // 2: UpdateUserFingerprint
+	(*SendMessageToRoom)(nil),              // 3: SendMessageToRoom
+	(*GetAuthChallenge_Request)(nil),       // 4: GetAuthChallenge.Request
+	(*GetAuthChallenge_Response)(nil),      // 5: GetAuthChallenge.Response
+	(*Auth_Request)(nil),                   // 6: Auth.Request
+	(*Auth_Response)(nil),                  // 7: Auth.Response
+	(*UpdateUserFingerprint_Request)(nil),  // 8: UpdateUserFingerprint.Request
+	(*UpdateUserFingerprint_Response)(nil), // 9: UpdateUserFingerprint.Response
+	(*SendMessageToRoom_Request)(nil),      // 10: SendMessageToRoom.Request
+	(*SendMessageToRoom_Response)(nil),     // 11: SendMessageToRoom.Response
 }
 var file_pkg_rpc_admin_service_proto_depIdxs = []int32{
-	2, // 0: AdminService.Auth:input_type -> Auth.Request
-	4, // 1: AdminService.ResetUserFingerprint:input_type -> ResetUserFingerprint.Request
-	3, // 2: AdminService.Auth:output_type -> Auth.Response
-	5, // 3: AdminService.ResetUserFingerprint:output_type -> ResetUserFingerprint.Response
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	4,  // 0: AdminService.GetAuthChallenge:input_type -> GetAuthChallenge.Request
+	6,  // 1: AdminService.Auth:input_type -> Auth.Request
+	8,  // 2: AdminService.UpdateUserFingerprint:input_type -> UpdateUserFingerprint.Request
+	10, // 3: AdminService.SendMessageToRoom:input_type -> SendMessageToRoom.Request
+	5,  // 4: AdminService.GetAuthChallenge:output_type -> GetAuthChallenge.Response
+	7,  // 5: AdminService.Auth:output_type -> Auth.Response
+	9,  // 6: AdminService.UpdateUserFingerprint:output_type -> UpdateUserFingerprint.Response
+	11, // 7: AdminService.SendMessageToRoom:output_type -> SendMessageToRoom.Response
+	4,  // [4:8] is the sub-list for method output_type
+	0,  // [0:4] is the sub-list for method input_type
+	0,  // [0:0] is the sub-list for extension type_name
+	0,  // [0:0] is the sub-list for extension extendee
+	0,  // [0:0] is the sub-list for field type_name
 }
 
 func init() { file_pkg_rpc_admin_service_proto_init() }
@@ -373,7 +718,7 @@ func file_pkg_rpc_admin_service_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_pkg_rpc_admin_service_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Auth); i {
+			switch v := v.(*GetAuthChallenge); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -385,7 +730,7 @@ func file_pkg_rpc_admin_service_proto_init() {
 			}
 		}
 		file_pkg_rpc_admin_service_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ResetUserFingerprint); i {
+			switch v := v.(*Auth); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -397,7 +742,7 @@ func file_pkg_rpc_admin_service_proto_init() {
 			}
 		}
 		file_pkg_rpc_admin_service_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Auth_Request); i {
+			switch v := v.(*UpdateUserFingerprint); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -409,7 +754,7 @@ func file_pkg_rpc_admin_service_proto_init() {
 			}
 		}
 		file_pkg_rpc_admin_service_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Auth_Response); i {
+			switch v := v.(*SendMessageToRoom); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -421,7 +766,7 @@ func file_pkg_rpc_admin_service_proto_init() {
 			}
 		}
 		file_pkg_rpc_admin_service_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ResetUserFingerprint_Request); i {
+			switch v := v.(*GetAuthChallenge_Request); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -433,7 +778,79 @@ func file_pkg_rpc_admin_service_proto_init() {
 			}
 		}
 		file_pkg_rpc_admin_service_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ResetUserFingerprint_Response); i {
+			switch v := v.(*GetAuthChallenge_Response); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_pkg_rpc_admin_service_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Auth_Request); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_pkg_rpc_admin_service_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Auth_Response); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_pkg_rpc_admin_service_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*UpdateUserFingerprint_Request); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_pkg_rpc_admin_service_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*UpdateUserFingerprint_Response); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_pkg_rpc_admin_service_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SendMessageToRoom_Request); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_pkg_rpc_admin_service_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SendMessageToRoom_Response); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -451,7 +868,7 @@ func file_pkg_rpc_admin_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_pkg_rpc_admin_service_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

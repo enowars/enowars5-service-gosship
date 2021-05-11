@@ -18,8 +18,10 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AdminServiceClient interface {
+	GetAuthChallenge(ctx context.Context, in *GetAuthChallenge_Request, opts ...grpc.CallOption) (*GetAuthChallenge_Response, error)
 	Auth(ctx context.Context, in *Auth_Request, opts ...grpc.CallOption) (*Auth_Response, error)
-	ResetUserFingerprint(ctx context.Context, in *ResetUserFingerprint_Request, opts ...grpc.CallOption) (*ResetUserFingerprint_Response, error)
+	UpdateUserFingerprint(ctx context.Context, in *UpdateUserFingerprint_Request, opts ...grpc.CallOption) (*UpdateUserFingerprint_Response, error)
+	SendMessageToRoom(ctx context.Context, in *SendMessageToRoom_Request, opts ...grpc.CallOption) (*SendMessageToRoom_Response, error)
 }
 
 type adminServiceClient struct {
@@ -28,6 +30,15 @@ type adminServiceClient struct {
 
 func NewAdminServiceClient(cc grpc.ClientConnInterface) AdminServiceClient {
 	return &adminServiceClient{cc}
+}
+
+func (c *adminServiceClient) GetAuthChallenge(ctx context.Context, in *GetAuthChallenge_Request, opts ...grpc.CallOption) (*GetAuthChallenge_Response, error) {
+	out := new(GetAuthChallenge_Response)
+	err := c.cc.Invoke(ctx, "/AdminService/GetAuthChallenge", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *adminServiceClient) Auth(ctx context.Context, in *Auth_Request, opts ...grpc.CallOption) (*Auth_Response, error) {
@@ -39,9 +50,18 @@ func (c *adminServiceClient) Auth(ctx context.Context, in *Auth_Request, opts ..
 	return out, nil
 }
 
-func (c *adminServiceClient) ResetUserFingerprint(ctx context.Context, in *ResetUserFingerprint_Request, opts ...grpc.CallOption) (*ResetUserFingerprint_Response, error) {
-	out := new(ResetUserFingerprint_Response)
-	err := c.cc.Invoke(ctx, "/AdminService/ResetUserFingerprint", in, out, opts...)
+func (c *adminServiceClient) UpdateUserFingerprint(ctx context.Context, in *UpdateUserFingerprint_Request, opts ...grpc.CallOption) (*UpdateUserFingerprint_Response, error) {
+	out := new(UpdateUserFingerprint_Response)
+	err := c.cc.Invoke(ctx, "/AdminService/UpdateUserFingerprint", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) SendMessageToRoom(ctx context.Context, in *SendMessageToRoom_Request, opts ...grpc.CallOption) (*SendMessageToRoom_Response, error) {
+	out := new(SendMessageToRoom_Response)
+	err := c.cc.Invoke(ctx, "/AdminService/SendMessageToRoom", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +72,10 @@ func (c *adminServiceClient) ResetUserFingerprint(ctx context.Context, in *Reset
 // All implementations must embed UnimplementedAdminServiceServer
 // for forward compatibility
 type AdminServiceServer interface {
+	GetAuthChallenge(context.Context, *GetAuthChallenge_Request) (*GetAuthChallenge_Response, error)
 	Auth(context.Context, *Auth_Request) (*Auth_Response, error)
-	ResetUserFingerprint(context.Context, *ResetUserFingerprint_Request) (*ResetUserFingerprint_Response, error)
+	UpdateUserFingerprint(context.Context, *UpdateUserFingerprint_Request) (*UpdateUserFingerprint_Response, error)
+	SendMessageToRoom(context.Context, *SendMessageToRoom_Request) (*SendMessageToRoom_Response, error)
 	mustEmbedUnimplementedAdminServiceServer()
 }
 
@@ -61,11 +83,17 @@ type AdminServiceServer interface {
 type UnimplementedAdminServiceServer struct {
 }
 
+func (UnimplementedAdminServiceServer) GetAuthChallenge(context.Context, *GetAuthChallenge_Request) (*GetAuthChallenge_Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAuthChallenge not implemented")
+}
 func (UnimplementedAdminServiceServer) Auth(context.Context, *Auth_Request) (*Auth_Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Auth not implemented")
 }
-func (UnimplementedAdminServiceServer) ResetUserFingerprint(context.Context, *ResetUserFingerprint_Request) (*ResetUserFingerprint_Response, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ResetUserFingerprint not implemented")
+func (UnimplementedAdminServiceServer) UpdateUserFingerprint(context.Context, *UpdateUserFingerprint_Request) (*UpdateUserFingerprint_Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateUserFingerprint not implemented")
+}
+func (UnimplementedAdminServiceServer) SendMessageToRoom(context.Context, *SendMessageToRoom_Request) (*SendMessageToRoom_Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendMessageToRoom not implemented")
 }
 func (UnimplementedAdminServiceServer) mustEmbedUnimplementedAdminServiceServer() {}
 
@@ -78,6 +106,24 @@ type UnsafeAdminServiceServer interface {
 
 func RegisterAdminServiceServer(s grpc.ServiceRegistrar, srv AdminServiceServer) {
 	s.RegisterService(&AdminService_ServiceDesc, srv)
+}
+
+func _AdminService_GetAuthChallenge_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAuthChallenge_Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).GetAuthChallenge(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/AdminService/GetAuthChallenge",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).GetAuthChallenge(ctx, req.(*GetAuthChallenge_Request))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _AdminService_Auth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -98,20 +144,38 @@ func _AdminService_Auth_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AdminService_ResetUserFingerprint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ResetUserFingerprint_Request)
+func _AdminService_UpdateUserFingerprint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateUserFingerprint_Request)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AdminServiceServer).ResetUserFingerprint(ctx, in)
+		return srv.(AdminServiceServer).UpdateUserFingerprint(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/AdminService/ResetUserFingerprint",
+		FullMethod: "/AdminService/UpdateUserFingerprint",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AdminServiceServer).ResetUserFingerprint(ctx, req.(*ResetUserFingerprint_Request))
+		return srv.(AdminServiceServer).UpdateUserFingerprint(ctx, req.(*UpdateUserFingerprint_Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_SendMessageToRoom_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendMessageToRoom_Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).SendMessageToRoom(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/AdminService/SendMessageToRoom",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).SendMessageToRoom(ctx, req.(*SendMessageToRoom_Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -124,12 +188,20 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*AdminServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
+			MethodName: "GetAuthChallenge",
+			Handler:    _AdminService_GetAuthChallenge_Handler,
+		},
+		{
 			MethodName: "Auth",
 			Handler:    _AdminService_Auth_Handler,
 		},
 		{
-			MethodName: "ResetUserFingerprint",
-			Handler:    _AdminService_ResetUserFingerprint_Handler,
+			MethodName: "UpdateUserFingerprint",
+			Handler:    _AdminService_UpdateUserFingerprint_Handler,
+		},
+		{
+			MethodName: "SendMessageToRoom",
+			Handler:    _AdminService_SendMessageToRoom_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

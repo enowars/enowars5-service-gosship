@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"gosship/pkg/chat"
 	"gosship/pkg/database"
 	"gosship/pkg/rpc/admin"
 	"gosship/pkg/sshnet"
@@ -12,20 +13,25 @@ import (
 )
 
 type GRPCServer struct {
-	log        *logrus.Logger
-	db         *database.Database
-	listener   *sshnet.Listener
-	grpcServer *grpc.Server
+	log          *logrus.Logger
+	db           *database.Database
+	host         *chat.Host
+	listener     *sshnet.Listener
+	grpcServer   *grpc.Server
+	adminService *admin.Service
 }
 
-func NewGRPCServer(log *logrus.Logger, db *database.Database) *GRPCServer {
+func NewGRPCServer(log *logrus.Logger, db *database.Database, host *chat.Host) *GRPCServer {
 	grpcServer := grpc.NewServer()
-	admin.RegisterAdminServiceServer(grpcServer, admin.NewService(log, db))
+	adminService := admin.NewService(log, db, host)
+	admin.RegisterAdminServiceServer(grpcServer, adminService)
 	return &GRPCServer{
-		log:        log,
-		db:         db,
-		listener:   sshnet.NewListener(),
-		grpcServer: grpcServer,
+		log:          log,
+		db:           db,
+		host:         host,
+		listener:     sshnet.NewListener(),
+		grpcServer:   grpcServer,
+		adminService: adminService,
 	}
 }
 
@@ -36,6 +42,7 @@ func (s *GRPCServer) Handle(srv *ssh.Server, conn *gossh.ServerConn, newChan gos
 		return
 	}
 	go gossh.DiscardRequests(reqs)
+	s.adminService.PrepareForSession(ctx.SessionID())
 	s.listener.PushChannel(ch)
 }
 

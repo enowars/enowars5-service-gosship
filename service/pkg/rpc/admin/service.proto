@@ -1,9 +1,20 @@
 syntax = "proto3";
 option go_package = "pkg/rpc/admin";
 
+message GetAuthChallenge {
+  message Request {
+  }
+  message Response {
+    string Error = 1;
+    string ChallengeId = 2;
+    bytes Challenge = 3;
+  }
+}
+
 message Auth {
   message Request {
-    string Password = 1;
+    string ChallengeId = 1;
+    bytes Signature = 2;
   }
   message Response {
     string Error = 1;
@@ -11,10 +22,22 @@ message Auth {
   }
 }
 
-message ResetUserFingerprint {
+message UpdateUserFingerprint {
   message Request {
     string SessionToken = 1;
     string Username = 2;
+    string Fingerprint = 3;
+  }
+  message Response {
+    string Error = 1;
+  }
+}
+
+message SendMessageToRoom {
+  message Request {
+    string SessionToken = 1;
+    string Room = 2;
+    string Message = 3;
   }
   message Response {
     string Error = 1;
@@ -22,6 +45,8 @@ message ResetUserFingerprint {
 }
 
 service AdminService {
+  rpc GetAuthChallenge(GetAuthChallenge.Request) returns (GetAuthChallenge.Response);
   rpc Auth(Auth.Request) returns (Auth.Response);
-  rpc ResetUserFingerprint(ResetUserFingerprint.Request) returns (ResetUserFingerprint.Response);
+  rpc UpdateUserFingerprint(UpdateUserFingerprint.Request) returns (UpdateUserFingerprint.Response);
+  rpc SendMessageToRoom(SendMessageToRoom.Request) returns (SendMessageToRoom.Response);
 }
