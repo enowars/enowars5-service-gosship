@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("loaded key with fingerprint: %s\n", gossh.FingerprintSHA256(signer.PublicKey()))
+	log.Printf("loaded key with fingerprint: %s", gossh.FingerprintSHA256(signer.PublicKey()))
 	log.Println("setting up host...")
 	h := chat.NewHost(log, db)
 	go h.Serve()
@@ -51,7 +51,7 @@ func main() {
 
 	log.Println("starting ssh server...")
 	srv := &ssh.Server{
-		Addr:             "localhost:2222",
+		Addr:             ":2222",
 		Handler:          h.HandleNewSession,
 		HostSigners:      []ssh.Signer{signer},
 		Version:          "gosship",
@@ -61,7 +61,7 @@ func main() {
 			"rpc":     rpcServer.Handle,
 		},
 	}
-	log.Printf("listening on %s\n", srv.Addr)
+	log.Printf("listening on %s", srv.Addr)
 	err = srv.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
