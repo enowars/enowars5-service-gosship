@@ -54,17 +54,18 @@ func NewUser(db *database.Database, session ssh.Session) (*User, error) {
 		}
 	}
 
-	prompt := aurora.Sprintf("[%s]: ", aurora.Magenta(name))
 	u := &User{
 		Session:     session,
 		Name:        name,
-		Term:        terminal.New(session, prompt),
+		Term:        terminal.New(session, ""),
 		CurrentRoom: "default",
 		Fingerprint: fingerprint,
 		db:          db,
 		Id:          "",
 		Dummy:       false,
 	}
+
+	u.UpdatePrompt()
 
 	if userId != "" {
 		u.Id = userId
@@ -83,6 +84,10 @@ func NewUser(db *database.Database, session ssh.Session) (*User, error) {
 	}
 
 	return u, nil
+}
+
+func (u *User) UpdatePrompt() {
+	u.Term.SetPrompt(aurora.Sprintf("[%s]: ", aurora.Magenta(u.Name)))
 }
 
 func (u *User) WriteLine(line string) error {
