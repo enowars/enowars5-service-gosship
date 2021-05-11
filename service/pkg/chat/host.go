@@ -42,7 +42,7 @@ func (h *Host) AddUser(u *User) bool {
 		return false
 	}
 	h.users[u.Name] = u
-	h.Log.Printf("[%s] added\n", u.Name)
+	h.Log.Printf("[%s] added", u.Name)
 	return true
 }
 
@@ -50,7 +50,7 @@ func (h *Host) RemoveUser(name string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	delete(h.users, name)
-	h.Log.Printf("[%s] removed\n", name)
+	h.Log.Printf("[%s] removed", name)
 }
 
 func (h *Host) writeLineLogError(w io.Writer, s string) {
@@ -78,7 +78,7 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 		return err
 	}
 
-	h.Log.Printf("[%s] new session: fingerprint=(%s)\n", u.Name, u.Fingerprint)
+	h.Log.Printf("[%s] new session: fingerprint=%s", u.Name, u.Fingerprint)
 	if !h.AddUser(u) {
 		err := u.WriteLine(aurora.Sprintf("%s is already logged in!", aurora.Red(u.Name)))
 		if err != nil {
@@ -135,7 +135,7 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 }
 
 func (h *Host) HandlePublicKey(ctx ssh.Context, key ssh.PublicKey) bool {
-	h.Log.Printf("new connection (%s) with key type: %s\n", ctx.RemoteAddr(), key.Type())
+	h.Log.Printf("new connection (%s) with key type: %s", ctx.RemoteAddr(), key.Type())
 	return true
 }
 

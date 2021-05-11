@@ -85,7 +85,7 @@ func (db *Database) SetConfig(ce *ConfigEntry) error {
 }
 
 func (db *Database) AddOrUpdateUser(id string, u *UserEntry) error {
-	db.log.Printf("adding/updating user with id: %s\n", id)
+	db.log.Printf("adding/updating user with id: %s", id)
 	return db.addNewEntry(TypeUserEntry, id, u)
 }
 
@@ -122,7 +122,7 @@ func (db *Database) FindUserByPredicate(predicate func(entry *UserEntry) bool) (
 }
 
 func (db *Database) UpdateUserFingerprint(username, fingerprint string) error {
-	db.log.Printf("updating fingerprint for user: %s\n", username)
+	db.log.Printf("updating fingerprint for user: %s", username)
 	userId, userEntry, err := db.FindUserByPredicate(func(entry *UserEntry) bool {
 		return entry.Name == username
 	})
