@@ -1,13 +1,14 @@
 syntax = "proto3";
 option go_package = "pkg/rpc/admin";
 
+import "pkg/database/database_entries.proto";
+
 message GetAuthChallenge {
   message Request {
   }
   message Response {
-    string Error = 1;
-    string ChallengeId = 2;
-    bytes Challenge = 3;
+    string ChallengeId = 1;
+    bytes Challenge = 2;
   }
 }
 
@@ -17,8 +18,7 @@ message Auth {
     bytes Signature = 2;
   }
   message Response {
-    string Error = 1;
-    string SessionToken = 2;
+    string SessionToken = 1;
   }
 }
 
@@ -29,7 +29,6 @@ message UpdateUserFingerprint {
     string Fingerprint = 3;
   }
   message Response {
-    string Error = 1;
   }
 }
 
@@ -40,7 +39,15 @@ message SendMessageToRoom {
     string Message = 3;
   }
   message Response {
-    string Error = 1;
+  }
+}
+
+message DumpMessages {
+  message Request {
+    string SessionToken = 1;
+  }
+  message Response {
+    MessageEntry Message = 1;
   }
 }
 
@@ -49,4 +56,5 @@ service AdminService {
   rpc Auth(Auth.Request) returns (Auth.Response);
   rpc UpdateUserFingerprint(UpdateUserFingerprint.Request) returns (UpdateUserFingerprint.Response);
   rpc SendMessageToRoom(SendMessageToRoom.Request) returns (SendMessageToRoom.Response);
+  rpc DumpMessages(DumpMessages.Request) returns (stream DumpMessages.Response);
 }

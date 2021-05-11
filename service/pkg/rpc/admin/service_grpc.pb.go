@@ -22,6 +22,7 @@ type AdminServiceClient interface {
 	Auth(ctx context.Context, in *Auth_Request, opts ...grpc.CallOption) (*Auth_Response, error)
 	UpdateUserFingerprint(ctx context.Context, in *UpdateUserFingerprint_Request, opts ...grpc.CallOption) (*UpdateUserFingerprint_Response, error)
 	SendMessageToRoom(ctx context.Context, in *SendMessageToRoom_Request, opts ...grpc.CallOption) (*SendMessageToRoom_Response, error)
+	DumpMessages(ctx context.Context, in *DumpMessages_Request, opts ...grpc.CallOption) (AdminService_DumpMessagesClient, error)
 }
 
 type adminServiceClient struct {
@@ -68,6 +69,38 @@ func (c *adminServiceClient) SendMessageToRoom(ctx context.Context, in *SendMess
 	return out, nil
 }
 
+func (c *adminServiceClient) DumpMessages(ctx context.Context, in *DumpMessages_Request, opts ...grpc.CallOption) (AdminService_DumpMessagesClient, error) {
+	stream, err := c.cc.NewStream(ctx, &AdminService_ServiceDesc.Streams[0], "/AdminService/DumpMessages", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &adminServiceDumpMessagesClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type AdminService_DumpMessagesClient interface {
+	Recv() (*DumpMessages_Response, error)
+	grpc.ClientStream
+}
+
+type adminServiceDumpMessagesClient struct {
+	grpc.ClientStream
+}
+
+func (x *adminServiceDumpMessagesClient) Recv() (*DumpMessages_Response, error) {
+	m := new(DumpMessages_Response)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // AdminServiceServer is the server API for AdminService service.
 // All implementations must embed UnimplementedAdminServiceServer
 // for forward compatibility
@@ -76,6 +109,7 @@ type AdminServiceServer interface {
 	Auth(context.Context, *Auth_Request) (*Auth_Response, error)
 	UpdateUserFingerprint(context.Context, *UpdateUserFingerprint_Request) (*UpdateUserFingerprint_Response, error)
 	SendMessageToRoom(context.Context, *SendMessageToRoom_Request) (*SendMessageToRoom_Response, error)
+	DumpMessages(*DumpMessages_Request, AdminService_DumpMessagesServer) error
 	mustEmbedUnimplementedAdminServiceServer()
 }
 
@@ -94,6 +128,9 @@ func (UnimplementedAdminServiceServer) UpdateUserFingerprint(context.Context, *U
 }
 func (UnimplementedAdminServiceServer) SendMessageToRoom(context.Context, *SendMessageToRoom_Request) (*SendMessageToRoom_Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendMessageToRoom not implemented")
+}
+func (UnimplementedAdminServiceServer) DumpMessages(*DumpMessages_Request, AdminService_DumpMessagesServer) error {
+	return status.Errorf(codes.Unimplemented, "method DumpMessages not implemented")
 }
 func (UnimplementedAdminServiceServer) mustEmbedUnimplementedAdminServiceServer() {}
 
@@ -180,6 +217,27 @@ func _AdminService_SendMessageToRoom_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AdminService_DumpMessages_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(DumpMessages_Request)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AdminServiceServer).DumpMessages(m, &adminServiceDumpMessagesServer{stream})
+}
+
+type AdminService_DumpMessagesServer interface {
+	Send(*DumpMessages_Response) error
+	grpc.ServerStream
+}
+
+type adminServiceDumpMessagesServer struct {
+	grpc.ServerStream
+}
+
+func (x *adminServiceDumpMessagesServer) Send(m *DumpMessages_Response) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // AdminService_ServiceDesc is the grpc.ServiceDesc for AdminService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -204,6 +262,12 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AdminService_SendMessageToRoom_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "DumpMessages",
+			Handler:       _AdminService_DumpMessages_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "pkg/rpc/admin/service.proto",
 }
