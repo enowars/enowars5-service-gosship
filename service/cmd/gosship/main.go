@@ -40,13 +40,13 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("loaded key with fingerprint: %s\n", gossh.FingerprintLegacyMD5(signer.PublicKey()))
+	log.Printf("loaded key with fingerprint: %s\n", gossh.FingerprintSHA256(signer.PublicKey()))
 	log.Println("setting up host...")
 	h := chat.NewHost(log, db)
 	go h.Serve()
 
 	log.Println("starting grpc server...")
-	rpcServer := rpc.NewGRPCServer(log, db)
+	rpcServer := rpc.NewGRPCServer(log, db, h)
 	go rpcServer.Serve()
 
 	log.Println("starting ssh server...")

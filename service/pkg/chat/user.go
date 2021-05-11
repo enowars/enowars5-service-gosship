@@ -37,8 +37,8 @@ func NewUser(db *database.Database, session ssh.Session) (*User, error) {
 		return nil, err
 	}
 
-	fingerprint := gossh.FingerprintLegacyMD5(session.PublicKey())
-	if userId != "" && userEntry.Fingerprint != "" && userEntry.Fingerprint != fingerprint {
+	fingerprint := gossh.FingerprintSHA256(session.PublicKey())
+	if userId != "" && userEntry.Fingerprint != fingerprint {
 		return nil, ErrFingerprintDoesNotMatch
 	}
 
