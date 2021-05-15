@@ -6,10 +6,10 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func GetSSHClient(signer ssh.Signer) (*ssh.Client, error) {
-	sshClient, err := ssh.Dial("tcp", "127.0.0.1:2222", &ssh.ClientConfig{
+func GetSSHClient(user, addr string, signer ssh.Signer) (*ssh.Client, error) {
+	sshClient, err := ssh.Dial("tcp", addr+":2222", &ssh.ClientConfig{
 		Config:          ssh.Config{},
-		User:            "client",
+		User:            user,
 		Auth:            []ssh.AuthMethod{ssh.PublicKeys(signer)},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	})
@@ -27,8 +27,4 @@ func OpenRPCChannel(sshClient *ssh.Client) (ssh.Channel, error) {
 	}
 	go ssh.DiscardRequests(reqs)
 	return channel, nil
-}
-
-func GetAdminClient() {
-
 }

@@ -9,7 +9,7 @@ import (
 )
 
 func run(signer ssh.Signer) error {
-	sshClient, err := client.GetSSHClient(signer)
+	sshClient, err := client.GetSSHClient("client", "localhost", signer)
 	if err != nil {
 		return err
 	}
