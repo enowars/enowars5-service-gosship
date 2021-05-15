@@ -2,3 +2,4 @@
 service/gosship
 server.key
 service/db/
+checker/db/
