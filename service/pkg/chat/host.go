@@ -372,10 +372,11 @@ func (h *Host) HasRoom(room string) bool {
 	return ok
 }
 
-func (h *Host) CreateRoom(room, password string) {
+func (h *Host) CreateRoom(room, password string) error {
 	h.roomsMu.Lock()
 	defer h.roomsMu.Unlock()
 	h.Rooms[room] = password
+	return h.Database.SetRoomConfig(&database.RoomConfigEntry{Rooms: h.Rooms})
 }
 
 func (h *Host) CheckRoomPassword(room, password string) bool {

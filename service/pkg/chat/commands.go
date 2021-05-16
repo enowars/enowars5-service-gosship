@@ -193,10 +193,13 @@ var Commands = []*Command{
 			if h.HasRoom(roomName) {
 				return fmt.Errorf("room %s already exist", roomName)
 			}
-			h.CreateRoom(roomName, password)
+			err := h.CreateRoom(roomName, password)
+			if err != nil {
+				return err
+			}
 			h.Announcement(aurora.Sprintf("room %s was created by %s.", aurora.Blue(roomName), msg.From.RenderName()))
 			h.LeftRoomAnnouncement(msg.From)
-			err := msg.From.UpdateCurrentRoom(roomName)
+			err = msg.From.UpdateCurrentRoom(roomName)
 			if err != nil {
 				return err
 			}
