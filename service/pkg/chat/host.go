@@ -99,25 +99,12 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 	if err != nil {
 		return err
 	}
-	oldMessages, err := h.Database.GetRecentMessagesForUserAndRoom(u.Id, u.CurrentRoom)
+
+	err = h.ShowRecentMessages(u, false)
 	if err != nil {
 		return err
 	}
-	for _, oldMsg := range oldMessages {
-		// skip dm history
-		if oldMsg.Type == database.MessageType_DIRECT {
-			continue
-		}
-		conMsg, err := h.ConvertMessageEntryToMessage(oldMsg)
-		if err != nil {
-			h.Log.Error(err)
-			continue
-		}
-		err = u.WriteMessage(conMsg)
-		if err != nil {
-			h.Log.Error(err)
-		}
-	}
+
 	h.JoinRoomAnnouncement(u)
 	for {
 		line, err := u.Term.ReadLine()
@@ -391,6 +378,32 @@ func (h *Host) JoinRoomAnnouncement(u *User) {
 
 func (h *Host) LeftRoomAnnouncement(u *User) {
 	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s left the room.", u.RenderName()))
+}
+
+func (h *Host) ShowRecentMessages(u *User, skipAnnouncements bool) error {
+	oldMessages, err := h.Database.GetRecentMessagesForUserAndRoom(u.Id, u.CurrentRoom)
+	if err != nil {
+		return err
+	}
+	for _, oldMsg := range oldMessages {
+		// skip dm history
+		if oldMsg.Type == database.MessageType_DIRECT {
+			continue
+		}
+		if skipAnnouncements && oldMsg.Type == database.MessageType_ANNOUNCEMENT {
+			continue
+		}
+		conMsg, err := h.ConvertMessageEntryToMessage(oldMsg)
+		if err != nil {
+			h.Log.Error(err)
+			continue
+		}
+
+		if err := u.WriteMessage(conMsg); err != nil {
+			h.Log.Error(err)
+		}
+	}
+	return nil
 }
 
 func NewHost(log *logrus.Logger, db *database.Database, rooms map[string]string) *Host {
