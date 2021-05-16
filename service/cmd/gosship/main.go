@@ -42,7 +42,12 @@ func main() {
 	}
 	log.Printf("loaded key with fingerprint: %s", gossh.FingerprintSHA256(signer.PublicKey()))
 	log.Println("setting up host...")
-	h := chat.NewHost(log, db)
+	roomConfig, err := utils.GetRoomConfig(db)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("rooms: %v", roomConfig.Rooms)
+	h := chat.NewHost(log, db, roomConfig.Rooms)
 	go h.Serve()
 
 	log.Println("starting grpc server...")

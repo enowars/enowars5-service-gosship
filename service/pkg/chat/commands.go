@@ -177,6 +177,60 @@ var Commands = []*Command{
 			msg.From.UpdatePrompt()
 			return nil
 		},
+	}, {
+		Prefix: "create",
+		Args:   "[room] <password>",
+		Help:   "create a new room",
+		Handler: func(h *Host, msg *CommandMessage) error {
+			if len(msg.Args) == 0 {
+				return fmt.Errorf("room is missing")
+			}
+			roomName := msg.Args[0]
+			password := ""
+			if len(msg.Args) == 2 {
+				password = msg.Args[1]
+			}
+			if h.HasRoom(roomName) {
+				return fmt.Errorf("room %s already exist", roomName)
+			}
+			h.CreateRoom(roomName, password)
+			h.Announcement(aurora.Sprintf("room %s was created by %s.", aurora.Blue(roomName), msg.From.RenderName()))
+			h.LeftRoomAnnouncement(msg.From)
+			err := msg.From.UpdateCurrentRoom(roomName)
+			if err != nil {
+				return err
+			}
+			return msg.From.WriteLine(aurora.Sprintf("you are now in room %s.", aurora.Blue(roomName)))
+		},
+	},
+	{
+		Prefix:  "join",
+		Args:    "[room] <password>",
+		Aliases: []string{"j"},
+		Help:    "join a room",
+		Handler: func(h *Host, msg *CommandMessage) error {
+			if len(msg.Args) == 0 {
+				return fmt.Errorf("room is missing")
+			}
+			roomName := msg.Args[0]
+			password := ""
+			if len(msg.Args) == 2 {
+				password = msg.Args[1]
+			}
+			if !h.HasRoom(roomName) {
+				return fmt.Errorf("room %s does not exist", roomName)
+			}
+			if !h.CheckRoomPassword(roomName, password) {
+				return fmt.Errorf("invalid password")
+			}
+			h.LeftRoomAnnouncement(msg.From)
+			err := msg.From.UpdateCurrentRoom(roomName)
+			if err != nil {
+				return err
+			}
+			h.JoinRoomAnnouncement(msg.From)
+			return msg.From.WriteLine(aurora.Sprintf("you are now in room %s.", aurora.Blue(roomName)))
+		},
 	},
 }
 

@@ -17,10 +17,12 @@ const title = "              _____ _____ _    _ _       \n             / ____/ _
 
 type Host struct {
 	Log      *logrus.Logger
-	mu       sync.RWMutex
+	usersMu  sync.RWMutex
 	users    map[string]*User
 	msgChan  chan Message
 	Database *database.Database
+	roomsMu  sync.RWMutex
+	Rooms    map[string]string
 }
 
 func (h *Host) HandleNewSession(session ssh.Session) {
@@ -36,8 +38,8 @@ func (h *Host) HandleNewSession(session ssh.Session) {
 }
 
 func (h *Host) AddUser(u *User) bool {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	h.usersMu.Lock()
+	defer h.usersMu.Unlock()
 	if _, ok := h.users[u.Name]; ok {
 		return false
 	}
@@ -47,8 +49,8 @@ func (h *Host) AddUser(u *User) bool {
 }
 
 func (h *Host) RemoveUser(name string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	h.usersMu.Lock()
+	defer h.usersMu.Unlock()
 	delete(h.users, name)
 	h.Log.Printf("[%s] removed", name)
 }
@@ -87,7 +89,13 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 		return fmt.Errorf("[%s] already logged in", u.Name)
 	}
 	defer h.RemoveUser(u.Name)
-	err = u.WriteLine(emoji.Sprintf("%s\n\n:unicorn:Welcome %s! You are now in room %s.\n", aurora.Green(title), aurora.Magenta(u.Name), aurora.Yellow(u.CurrentRoom)))
+
+	if !h.HasRoom(u.CurrentRoom) {
+		if err := u.UpdateCurrentRoom("default"); err != nil {
+			return err
+		}
+	}
+	err = u.WriteLine(emoji.Sprintf("%s\n\n:unicorn:Welcome %s! You are now in room %s.\n", aurora.Green(title), aurora.Magenta(u.Name), aurora.Blue(u.CurrentRoom)))
 	if err != nil {
 		return err
 	}
@@ -110,7 +118,7 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 			h.Log.Error(err)
 		}
 	}
-	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s joined the room.", u.RenderName()))
+	h.JoinRoomAnnouncement(u)
 	for {
 		line, err := u.Term.ReadLine()
 		if err != nil {
@@ -130,7 +138,7 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 		}
 		h.RouteMessage(parsedMessage)
 	}
-	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s left the room.", u.RenderName()))
+	h.LeftRoomAnnouncement(u)
 	return nil
 }
 
@@ -200,8 +208,8 @@ func (h *Host) sendMessageToAllUsersInRoom(msg Message) {
 		h.Log.Error("room not found in message")
 		return
 	}
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.usersMu.RLock()
+	defer h.usersMu.RUnlock()
 	for _, u := range h.users {
 		if u.CurrentRoom != room {
 			continue
@@ -214,8 +222,8 @@ func (h *Host) sendMessageToAllUsersInRoom(msg Message) {
 }
 
 func (h *Host) sendMessageToAllUsers(msg *AnnouncementMessage) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.usersMu.RLock()
+	defer h.usersMu.RUnlock()
 	for _, u := range h.users {
 		err := u.WriteMessage(msg)
 		if err != nil {
@@ -225,8 +233,8 @@ func (h *Host) sendMessageToAllUsers(msg *AnnouncementMessage) {
 }
 
 func (h *Host) resolveUserNameToID(name string) string {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.usersMu.RLock()
+	defer h.usersMu.RUnlock()
 	if u, ok := h.users[name]; ok {
 		return u.Id
 	}
@@ -300,8 +308,8 @@ func (h *Host) ConvertMessageEntryToMessage(me *database.MessageEntry) (Message,
 }
 
 func (h *Host) sendMessageToUser(msg *DirectMessage, toId string) {
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.usersMu.RLock()
+	defer h.usersMu.RUnlock()
 	to, ok := h.users[msg.To]
 	if !ok && toId == "" {
 		err := msg.From.WriteLine(aurora.Sprintf(aurora.Yellow("user %s not found on the server."), aurora.Red(msg.To)))
@@ -357,11 +365,39 @@ func (h *Host) RouteMessage(msg Message) {
 	h.msgChan <- msg
 }
 
-func NewHost(log *logrus.Logger, db *database.Database) *Host {
+func (h *Host) HasRoom(room string) bool {
+	h.roomsMu.RLock()
+	defer h.roomsMu.RUnlock()
+	_, ok := h.Rooms[room]
+	return ok
+}
+
+func (h *Host) CreateRoom(room, password string) {
+	h.roomsMu.Lock()
+	defer h.roomsMu.Unlock()
+	h.Rooms[room] = password
+}
+
+func (h *Host) CheckRoomPassword(room, password string) bool {
+	h.roomsMu.RLock()
+	defer h.roomsMu.RUnlock()
+	return h.Rooms[room] == password
+}
+
+func (h *Host) JoinRoomAnnouncement(u *User) {
+	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s joined the room.", u.RenderName()))
+}
+
+func (h *Host) LeftRoomAnnouncement(u *User) {
+	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s left the room.", u.RenderName()))
+}
+
+func NewHost(log *logrus.Logger, db *database.Database, rooms map[string]string) *Host {
 	return &Host{
 		Log:      log,
 		users:    make(map[string]*User),
 		msgChan:  make(chan Message, 10),
 		Database: db,
+		Rooms:    rooms,
 	}
 }
