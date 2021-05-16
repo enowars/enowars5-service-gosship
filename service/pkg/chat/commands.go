@@ -231,8 +231,13 @@ var Commands = []*Command{
 			if err != nil {
 				return err
 			}
+			_ = msg.From.WriteLine(aurora.Sprintf("you are now in room %s.", aurora.Blue(roomName)))
+			err = h.ShowRecentMessages(msg.From, true)
+			if err != nil {
+				return err
+			}
 			h.JoinRoomAnnouncement(msg.From)
-			return msg.From.WriteLine(aurora.Sprintf("you are now in room %s.", aurora.Blue(roomName)))
+			return nil
 		},
 	},
 }
