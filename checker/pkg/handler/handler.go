@@ -5,6 +5,7 @@ import (
 	"checker/pkg/checker"
 	"checker/pkg/client"
 	"checker/pkg/database"
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -25,26 +26,35 @@ func New(log *logrus.Logger, db *database.Database) *Handler {
 	}
 }
 
-func sendMessageAndCheckResponse(sessIo *client.SessionIO, message, check string) error {
+func (h *Handler) sendMessageAndCheckResponse(ctx context.Context, sessIo *client.SessionIO, message, check string) error {
 	_, err := fmt.Fprintf(sessIo, "%s\n\r", message)
 	if err != nil {
 		return err
 	}
-
+	errCh := make(chan error)
 	scanner := bufio.NewScanner(sessIo)
-	for scanner.Scan() {
-		if strings.Contains(scanner.Text(), check) {
-			time.Sleep(time.Millisecond * 100)
-			break
+	go func() {
+		for scanner.Scan() {
+			if strings.Contains(scanner.Text(), check) {
+				time.Sleep(time.Millisecond * 100)
+				break
+			}
 		}
-	}
-	if err := scanner.Err(); err != nil {
+		if err := scanner.Err(); err != nil {
+			errCh <- err
+		}
+		close(errCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-errCh:
 		return err
 	}
-	return nil
 }
 
-func (h *Handler) PutFlag(message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
 	userA, err := client.GenerateNewUser()
 	if err != nil {
 		return nil, err
@@ -54,13 +64,13 @@ func (h *Handler) PutFlag(message *checker.TaskMessage) (*checker.ResultMessage,
 		return nil, err
 	}
 
-	_, _, chA, err := client.CreateSSHSession(userA.Name, message.Address, userA.PrivateKey)
+	_, _, chA, err := client.CreateSSHSession(ctx, userA.Name, message.Address, userA.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
 	chA.Execute()
 
-	_, sessionIO, ch, err := client.CreateSSHSession(userB.Name, message.Address, userB.PrivateKey)
+	_, sessionIO, ch, err := client.CreateSSHSession(ctx, userB.Name, message.Address, userB.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +78,7 @@ func (h *Handler) PutFlag(message *checker.TaskMessage) (*checker.ResultMessage,
 
 	flagMessage := fmt.Sprintf(":wave: %s", message.Flag)
 	directMessage := fmt.Sprintf("/dm %s %s", userA.Name, flagMessage)
-	err = sendMessageAndCheckResponse(sessionIO, directMessage, flagMessage)
+	err = h.sendMessageAndCheckResponse(ctx, sessionIO, directMessage, flagMessage)
 
 	if err != nil {
 		return nil, err
@@ -89,18 +99,18 @@ func (h *Handler) PutFlag(message *checker.TaskMessage) (*checker.ResultMessage,
 	}, nil
 }
 
-func (h *Handler) GetFlag(message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) GetFlag(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
 	fi, err := h.db.GetFlagInfo(message.TaskChainId)
 	if err != nil {
 		return nil, err
 	}
-	_, sessionIO, ch, err := client.CreateSSHSession(fi.UserA.Name, message.Address, fi.UserA.PrivateKey)
+	_, sessionIO, ch, err := client.CreateSSHSession(ctx, fi.UserA.Name, message.Address, fi.UserA.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
 	defer ch.Execute()
 	historyCmd := fmt.Sprintf("/history %s", fi.UserB.Name)
-	err = sendMessageAndCheckResponse(sessionIO, historyCmd, message.Flag)
+	err = h.sendMessageAndCheckResponse(ctx, sessionIO, historyCmd, message.Flag)
 	if err != nil {
 		return nil, err
 	}
@@ -110,15 +120,15 @@ func (h *Handler) GetFlag(message *checker.TaskMessage) (*checker.ResultMessage,
 	}, nil
 }
 
-func (h *Handler) PutNoise(message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) PutNoise(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (h *Handler) GetNoise(message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) GetNoise(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (h *Handler) Havoc(message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) Havoc(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
 	return nil, errors.New("not implemented")
 }
 

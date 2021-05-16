@@ -1,10 +1,12 @@
 package checker
 
 import (
+	"context"
 	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/sirupsen/logrus"
@@ -14,11 +16,11 @@ import (
 var indexPage []byte
 
 type Handler interface {
-	PutFlag(message *TaskMessage) (*ResultMessage, error)
-	GetFlag(message *TaskMessage) (*ResultMessage, error)
-	PutNoise(message *TaskMessage) (*ResultMessage, error)
-	GetNoise(message *TaskMessage) (*ResultMessage, error)
-	Havoc(message *TaskMessage) (*ResultMessage, error)
+	PutFlag(ctx context.Context, message *TaskMessage) (*ResultMessage, error)
+	GetFlag(ctx context.Context, message *TaskMessage) (*ResultMessage, error)
+	PutNoise(ctx context.Context, message *TaskMessage) (*ResultMessage, error)
+	GetNoise(ctx context.Context, message *TaskMessage) (*ResultMessage, error)
+	Havoc(ctx context.Context, message *TaskMessage) (*ResultMessage, error)
 	GetServiceInfo() *InfoMessage
 }
 
@@ -41,8 +43,16 @@ func NewChecker(log *logrus.Logger, handler Handler) *Checker {
 }
 
 func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *http.Request, p httprouter.Params) {
+	var tm TaskMessage
+	if err := json.NewDecoder(request.Body).Decode(&tm); err != nil {
+		http.Error(writer, "could not parse body", http.StatusBadRequest)
+		return
+	}
+
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-	res, err := c.checker(request, p)
+	ctx, cancel := context.WithTimeout(request.Context(), time.Duration(tm.Timeout)*time.Millisecond)
+	defer cancel()
+	res, err := c.checker(ctx, &tm)
 	if err != nil {
 		c.log.Error(err)
 		res = &ResultMessage{
@@ -82,23 +92,18 @@ func (c *Checker) service(writer http.ResponseWriter, request *http.Request, _ h
 	}
 }
 
-func (c *Checker) checker(request *http.Request, _ httprouter.Params) (*ResultMessage, error) {
-	var tm TaskMessage
-	if err := json.NewDecoder(request.Body).Decode(&tm); err != nil {
-		return nil, err
-	}
-
+func (c *Checker) checker(ctx context.Context, tm *TaskMessage) (*ResultMessage, error) {
 	switch tm.Method {
 	case TaskMessageMethodPutFlag:
-		return c.handler.PutFlag(&tm)
+		return c.handler.PutFlag(ctx, tm)
 	case TaskMessageMethodGetFlag:
-		return c.handler.GetFlag(&tm)
+		return c.handler.GetFlag(ctx, tm)
 	case TaskMessageMethodPutNoise:
-		return c.handler.PutNoise(&tm)
+		return c.handler.PutNoise(ctx, tm)
 	case TaskMessageMethodGetNoise:
-		return c.handler.GetNoise(&tm)
+		return c.handler.GetNoise(ctx, tm)
 	case TaskMessageMethodHavoc:
-		return c.handler.Havoc(&tm)
+		return c.handler.Havoc(ctx, tm)
 	}
 
 	return nil, fmt.Errorf("method not allowed")

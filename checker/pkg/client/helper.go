@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"crypto/ed25519"
 	"crypto/rand"
 	"fmt"
@@ -66,13 +67,13 @@ func (s *SessionIO) Close() error {
 	return s.in.Close()
 }
 
-func CreateSSHSession(user, addr string, privateKey ed25519.PrivateKey) (*ssh.Session, *SessionIO, *CloseHandler, error) {
+func CreateSSHSession(ctx context.Context, user, addr string, privateKey ed25519.PrivateKey) (*ssh.Session, *SessionIO, *CloseHandler, error) {
 	sshSigner, err := ssh.NewSignerFromSigner(privateKey)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	sshClient, err := GetSSHClient(user, addr, sshSigner)
+	sshClient, err := GetSSHClient(ctx, user, addr, sshSigner)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -96,10 +97,12 @@ func CreateSSHSession(user, addr string, privateKey ed25519.PrivateKey) (*ssh.Se
 
 	out, err := session.StdoutPipe()
 	if err != nil {
+		ch.Execute()
 		return nil, nil, nil, err
 	}
 	in, err := session.StdinPipe()
 	if err != nil {
+		ch.Execute()
 		return nil, nil, nil, err
 	}
 	sio := &SessionIO{
