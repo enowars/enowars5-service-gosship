@@ -21,9 +21,9 @@ func (t *Terminal) handleWinCh() {
 	}()
 }
 
-func New(session ssh.Session, prompt string) *Terminal {
+func New(session ssh.Session) *Terminal {
 	t := &Terminal{
-		Terminal: term.NewTerminal(session, prompt),
+		Terminal: term.NewTerminal(session, ""),
 		Session:  session,
 	}
 	t.SetEnterClear(true)

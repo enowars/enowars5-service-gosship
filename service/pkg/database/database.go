@@ -25,9 +25,13 @@ const (
 	TypeConfigEntry byte = iota
 	TypeUserEntry
 	TypeMessageEntry
+	TypeRoomConfigEntry
 )
 
-var configEntryKey = "server-config"
+var (
+	configEntryKey     = "server-config"
+	roomConfigEntryKey = "room-config"
+)
 
 type Database struct {
 	log *logrus.Logger
@@ -82,6 +86,36 @@ func (db *Database) GetConfig() (*ConfigEntry, error) {
 func (db *Database) SetConfig(ce *ConfigEntry) error {
 	db.log.Println("updating config...")
 	return db.addNewEntry(TypeConfigEntry, configEntryKey, ce)
+}
+
+func (db *Database) GetRoomConfig() (*RoomConfigEntry, error) {
+	db.log.Println("getting room config...")
+	var rce RoomConfigEntry
+	err := db.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(roomConfigEntryKey))
+		if err != nil {
+			return err
+		}
+		if item.UserMeta() != TypeRoomConfigEntry {
+			return fmt.Errorf("invalid config entry type")
+		}
+		return item.Value(func(val []byte) error {
+			return proto.Unmarshal(val, &rce)
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &rce, nil
+}
+
+func (db *Database) SetRoomConfig(rce *RoomConfigEntry) error {
+	db.log.Println("updating room config...")
+	return db.addNewEntry(TypeRoomConfigEntry, roomConfigEntryKey, rce)
+}
+
+func (db *Database) UpdateRooms(rooms map[string]string) error {
+	return db.SetRoomConfig(&RoomConfigEntry{Rooms: rooms})
 }
 
 func (db *Database) AddOrUpdateUser(id string, u *UserEntry) error {

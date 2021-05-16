@@ -57,7 +57,7 @@ func NewUser(db *database.Database, session ssh.Session) (*User, error) {
 	u := &User{
 		Session:     session,
 		Name:        name,
-		Term:        terminal.New(session, ""),
+		Term:        terminal.New(session),
 		CurrentRoom: "default",
 		Fingerprint: fingerprint,
 		db:          db,
@@ -74,11 +74,7 @@ func NewUser(db *database.Database, session ssh.Session) (*User, error) {
 		u.Id = uuid.NewString()
 	}
 
-	err = db.AddOrUpdateUser(u.Id, &database.UserEntry{
-		Fingerprint: u.Fingerprint,
-		Name:        u.Name,
-		CurrentRoom: u.CurrentRoom,
-	})
+	err = u.DBUpdate()
 	if err != nil {
 		return nil, err
 	}
@@ -110,4 +106,17 @@ func (u *User) WriteMessage(msg Message) error {
 
 func (u *User) RenderName() string {
 	return aurora.Cyan(u.Name).String()
+}
+
+func (u *User) DBUpdate() error {
+	return u.db.AddOrUpdateUser(u.Id, &database.UserEntry{
+		Fingerprint: u.Fingerprint,
+		Name:        u.Name,
+		CurrentRoom: u.CurrentRoom,
+	})
+}
+
+func (u *User) UpdateCurrentRoom(room string) error {
+	u.CurrentRoom = room
+	return u.DBUpdate()
 }

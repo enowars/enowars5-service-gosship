@@ -7,6 +7,10 @@ message ConfigEntry {
   bytes PrivateKey = 1;
 }
 
+message RoomConfigEntry {
+  map<string, string> Rooms = 1;
+}
+
 message UserEntry {
   string Fingerprint = 1;
   string Name = 2;
