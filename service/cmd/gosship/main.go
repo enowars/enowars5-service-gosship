@@ -23,6 +23,7 @@ func main() {
 		log.Fatal(err)
 	}
 
+	//TODO: cleanup
 	log.Println("resetting database...")
 	db.ResetExceptConfig()
 

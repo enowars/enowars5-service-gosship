@@ -317,6 +317,7 @@ func (db *Database) GetUserById(id string) (*UserEntry, error) {
 	return &ue, nil
 }
 
+//TODO: cleanup
 func (db *Database) DumpToLog() {
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
@@ -367,6 +368,7 @@ func (db *Database) DumpToLog() {
 	}
 }
 
+//TODO: cleanup
 func (db *Database) DumpMessages(emit func(*MessageEntry) error) error {
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
@@ -380,6 +382,52 @@ func (db *Database) DumpMessages(emit func(*MessageEntry) error) error {
 				var me MessageEntry
 				err := proto.Unmarshal(val, &me)
 				if err != nil {
+					return err
+				}
+				return emit(&me)
+			})
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *Database) DumpDirectMessages(username string, emit func(*MessageEntry) error) error {
+	id, _, err := db.FindUserByPredicate(func(entry *UserEntry) bool {
+		return entry.Name == username
+	})
+	if err != nil {
+		return err
+	}
+
+	if id == "" {
+		return fmt.Errorf("username not found in database")
+	}
+
+	err = db.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			if item.UserMeta() != TypeMessageEntry {
+				continue
+			}
+			err := item.Value(func(val []byte) error {
+				var me MessageEntry
+				err := proto.Unmarshal(val, &me)
+				if err != nil {
+					return err
+				}
+				if me.Type != MessageType_DIRECT {
+					return nil
+				}
+				if me.To != id && me.From != id {
 					return nil
 				}
 				return emit(&me)

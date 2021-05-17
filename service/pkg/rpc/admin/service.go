@@ -95,11 +95,11 @@ func (s *Service) SendMessageToRoom(ctx context.Context, request *SendMessageToR
 	return &SendMessageToRoom_Response{}, nil
 }
 
-func (s *Service) DumpMessages(request *DumpMessages_Request, server AdminService_DumpMessagesServer) error {
+func (s *Service) DumpDirectMessages(request *DumpDirectMessages_Request, server AdminService_DumpDirectMessagesServer) error {
 	if err := s.checkSession(request.SessionToken); err != nil {
 		return err
 	}
-	return s.db.DumpMessages(func(entry *database.MessageEntry) error {
-		return server.Send(&DumpMessages_Response{Message: entry})
+	return s.db.DumpDirectMessages(request.Username, func(entry *database.MessageEntry) error {
+		return server.Send(&DumpDirectMessages_Response{Message: entry})
 	})
 }
