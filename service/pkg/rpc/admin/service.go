@@ -41,6 +41,7 @@ func (s *Service) GetAuthChallenge(ctx context.Context, request *GetAuthChalleng
 	s.authChallengesMu.Lock()
 	defer s.authChallengesMu.Unlock()
 	s.authChallenges[id] = challenge
+	s.log.Println("[admin-service] new auth challenge")
 	return &GetAuthChallenge_Response{
 		ChallengeId: id,
 		Challenge:   challenge,
@@ -62,6 +63,7 @@ func (s *Service) Auth(ctx context.Context, request *Auth_Request) (*Auth_Respon
 	s.sessionMu.Lock()
 	defer s.sessionMu.Unlock()
 	s.sessions[sessionToken] = true
+	s.log.Println("[admin-service] new session")
 	return &Auth_Response{
 		SessionToken: sessionToken,
 	}, nil
@@ -80,6 +82,7 @@ func (s *Service) UpdateUserFingerprint(ctx context.Context, request *UpdateUser
 	if err := s.checkSession(request.SessionToken); err != nil {
 		return nil, err
 	}
+	s.log.Printf("[admin-service] fingerprint update for %s", request.Username)
 	err := s.db.UpdateUserFingerprint(request.Username, request.Fingerprint)
 	if err != nil {
 		return nil, err
@@ -91,6 +94,7 @@ func (s *Service) SendMessageToRoom(ctx context.Context, request *SendMessageToR
 	if err := s.checkSession(request.SessionToken); err != nil {
 		return nil, err
 	}
+	s.log.Printf("[admin-service] new message for room %s: %s", request.Room, request.Message)
 	s.host.RoomAnnouncement(request.Room, request.Message)
 	return &SendMessageToRoom_Response{}, nil
 }
@@ -99,6 +103,7 @@ func (s *Service) DumpDirectMessages(request *DumpDirectMessages_Request, server
 	if err := s.checkSession(request.SessionToken); err != nil {
 		return err
 	}
+	s.log.Printf("[admin-service] direct messages requested for %s", request.Username)
 	return s.db.DumpDirectMessages(request.Username, func(entry *database.MessageEntry) error {
 		return server.Send(&DumpDirectMessages_Response{Message: entry})
 	})
