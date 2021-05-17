@@ -172,7 +172,7 @@ var Commands = []*Command{
 			if err != nil {
 				return err
 			}
-			h.RoomAnnouncement(msg.From.CurrentRoom, aurora.Sprintf("%s changed their name to %s", msg.From.RenderName(), aurora.Cyan(newName)))
+			h.RoomAnnouncement(msg.From.CurrentRoom, aurora.Sprintf("%s changed their name to %s", msg.From.RenderName(false), aurora.Cyan(newName)))
 			msg.From.Name = newName
 			msg.From.UpdatePrompt()
 			return nil
@@ -195,7 +195,7 @@ var Commands = []*Command{
 				return err
 			}
 
-			h.Announcement(aurora.Sprintf("room %s was created by %s.", aurora.Blue(roomName), msg.From.RenderName()))
+			h.Announcement(aurora.Sprintf("room %s was created by %s.", aurora.Blue(roomName), msg.From.RenderName(false)))
 			h.LeftRoomAnnouncement(msg.From)
 			if err := msg.From.UpdateCurrentRoom(roomName); err != nil {
 				return err
@@ -235,6 +235,26 @@ var Commands = []*Command{
 			}
 			h.JoinRoomAnnouncement(msg.From)
 			return nil
+		},
+	},
+	{
+		Prefix: "users",
+		Help:   "list users who are connected to the server",
+		Handler: func(h *Host, msg *CommandMessage) error {
+			if err := msg.From.WriteLine(h.ServerInfo()); err != nil {
+				return err
+			}
+			return h.ListUsersForUser(msg.From)
+		},
+	},
+	{
+		Prefix: "rooms",
+		Help:   "list rooms on the server",
+		Handler: func(h *Host, msg *CommandMessage) error {
+			if err := msg.From.WriteLine("the following rooms exist on the server:"); err != nil {
+				return err
+			}
+			return h.ListRoomsForUser(msg.From)
 		},
 	},
 }

@@ -105,8 +105,15 @@ func (u *User) WriteMessage(msg Message) error {
 	return u.WriteLine(msg.RenderFor(u))
 }
 
-func (u *User) RenderName() string {
+func (u *User) RenderName(self bool) string {
+	if self {
+		return aurora.Magenta(u.Name).String()
+	}
 	return aurora.Cyan(u.Name).String()
+}
+
+func (u *User) RenderListInfo(self bool) string {
+	return aurora.Sprintf("%s %s (%s)", aurora.Yellow("*"), u.RenderName(self), aurora.Blue(u.CurrentRoom))
 }
 
 func (u *User) DBUpdate() error {
