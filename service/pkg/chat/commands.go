@@ -205,14 +205,14 @@ var Commands = []*Command{
 	},
 	{
 		Prefix:  "join",
-		Args:    "[room] <password>",
+		Args:    "<room> <password>",
 		Aliases: []string{"j"},
 		Help:    "join a room",
 		Handler: func(h *Host, msg *CommandMessage) error {
-			if len(msg.Args) == 0 {
-				return fmt.Errorf("room argument is missing")
+			roomName := "default"
+			if len(msg.Args) > 0 {
+				roomName = msg.Args[0]
 			}
-			roomName := msg.Args[0]
 			password := ""
 			if len(msg.Args) == 2 {
 				password = msg.Args[1]
@@ -239,7 +239,7 @@ var Commands = []*Command{
 	},
 	{
 		Prefix: "users",
-		Help:   "list users who are connected to the server",
+		Help:   "list users on the server",
 		Handler: func(h *Host, msg *CommandMessage) error {
 			if err := msg.From.WriteLine(h.ServerInfo()); err != nil {
 				return err
