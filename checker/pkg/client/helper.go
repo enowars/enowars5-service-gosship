@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"strings"
@@ -16,6 +17,13 @@ import (
 type User struct {
 	Name       string             `json:"name"`
 	PrivateKey ed25519.PrivateKey `json:"privateKey"`
+}
+
+func GenerateRoomAndPassword() (string, string) {
+	room := fmt.Sprintf("%s-%s-%s", randomdata.Adjective(), randomdata.Noun(), randomdata.BoundedDigits(6, 0, 999999))
+	pwBuf := make([]byte, 16)
+	_, _ = rand.Reader.Read(pwBuf)
+	return strings.ToLower(room), hex.EncodeToString(pwBuf)
 }
 
 func GenerateNewUser() (*User, error) {
