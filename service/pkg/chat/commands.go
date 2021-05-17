@@ -183,24 +183,21 @@ var Commands = []*Command{
 		Help:   "create a new room",
 		Handler: func(h *Host, msg *CommandMessage) error {
 			if len(msg.Args) == 0 {
-				return fmt.Errorf("room is missing")
+				return fmt.Errorf("room argument is missing")
 			}
 			roomName := msg.Args[0]
 			password := ""
 			if len(msg.Args) == 2 {
 				password = msg.Args[1]
 			}
-			if h.HasRoom(roomName) {
-				return fmt.Errorf("room %s already exist", roomName)
-			}
-			err := h.CreateRoom(roomName, password)
-			if err != nil {
+
+			if err := h.CreateRoom(roomName, password); err != nil {
 				return err
 			}
+
 			h.Announcement(aurora.Sprintf("room %s was created by %s.", aurora.Blue(roomName), msg.From.RenderName()))
 			h.LeftRoomAnnouncement(msg.From)
-			err = msg.From.UpdateCurrentRoom(roomName)
-			if err != nil {
+			if err := msg.From.UpdateCurrentRoom(roomName); err != nil {
 				return err
 			}
 			return msg.From.WriteLine(aurora.Sprintf("you are now in room %s.", aurora.Blue(roomName)))
@@ -213,27 +210,27 @@ var Commands = []*Command{
 		Help:    "join a room",
 		Handler: func(h *Host, msg *CommandMessage) error {
 			if len(msg.Args) == 0 {
-				return fmt.Errorf("room is missing")
+				return fmt.Errorf("room argument is missing")
 			}
 			roomName := msg.Args[0]
 			password := ""
 			if len(msg.Args) == 2 {
 				password = msg.Args[1]
 			}
-			if !h.HasRoom(roomName) {
-				return fmt.Errorf("room %s does not exist", roomName)
+			if msg.From.CurrentRoom == roomName {
+				return fmt.Errorf("you are already in room %s", roomName)
 			}
-			if !h.CheckRoomPassword(roomName, password) {
-				return fmt.Errorf("invalid password")
+
+			if err := h.CheckRoomPassword(roomName, password); err != nil {
+				return err
 			}
+
 			h.LeftRoomAnnouncement(msg.From)
-			err := msg.From.UpdateCurrentRoom(roomName)
-			if err != nil {
+			if err := msg.From.UpdateCurrentRoom(roomName); err != nil {
 				return err
 			}
 			_ = msg.From.WriteLine(aurora.Sprintf("you are now in room %s.", aurora.Blue(roomName)))
-			err = h.ShowRecentMessages(msg.From, true)
-			if err != nil {
+			if err := h.ShowRecentMessages(msg.From, true); err != nil {
 				return err
 			}
 			h.JoinRoomAnnouncement(msg.From)
