@@ -37,7 +37,8 @@ func NewDatabase(log *logrus.Logger) (*Database, error) {
 	}, nil
 }
 
-type FlagInfo struct {
+type Info struct {
+	Method      string               `json:"method"`
 	Variant     string               `json:"variant"`
 	TaskMessage *checker.TaskMessage `json:"taskMessage"`
 	UserA       *client.User         `json:"userA"`
@@ -47,7 +48,7 @@ type FlagInfo struct {
 	Timestamp   time.Time            `json:"timestamp"`
 }
 
-func (db *Database) PutFlagInfo(fi *FlagInfo) error {
+func (db *Database) PutInfo(fi *Info) error {
 	fi.Timestamp = time.Now()
 	data, err := json.Marshal(fi)
 	if err != nil {
@@ -60,8 +61,8 @@ func (db *Database) PutFlagInfo(fi *FlagInfo) error {
 	})
 }
 
-func (db *Database) GetFlagInfo(taskChainId string) (*FlagInfo, error) {
-	var fi FlagInfo
+func (db *Database) GetInfo(taskChainId string) (*Info, error) {
+	var fi Info
 	err := db.db.View(func(txn *badger.Txn) error {
 		get, err := txn.Get([]byte(taskChainId))
 		if err != nil {

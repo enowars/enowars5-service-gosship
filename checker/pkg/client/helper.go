@@ -59,8 +59,9 @@ func (ch *CloseHandler) Execute() {
 }
 
 type SessionIO struct {
-	out io.Reader
-	in  io.WriteCloser
+	Session *ssh.Session
+	out     io.Reader
+	in      io.WriteCloser
 }
 
 func (s *SessionIO) Read(p []byte) (n int, err error) {
@@ -75,7 +76,7 @@ func (s *SessionIO) Close() error {
 	return s.in.Close()
 }
 
-func CreateSSHSession(ctx context.Context, user, addr string, privateKey ed25519.PrivateKey) (*ssh.Session, *SessionIO, *CloseHandler, error) {
+func CreateSSHSession(ctx context.Context, user, addr string, privateKey ed25519.PrivateKey) (*ssh.Client, *SessionIO, *CloseHandler, error) {
 	sshSigner, err := ssh.NewSignerFromSigner(privateKey)
 	if err != nil {
 		return nil, nil, nil, err
@@ -114,13 +115,39 @@ func CreateSSHSession(ctx context.Context, user, addr string, privateKey ed25519
 		return nil, nil, nil, err
 	}
 	sio := &SessionIO{
-		out: out,
-		in:  in,
+		Session: session,
+		out:     out,
+		in:      in,
 	}
 	err = session.Shell()
 	if err != nil {
 		ch.Execute()
 		return nil, nil, nil, err
 	}
-	return session, sio, ch, nil
+	return sshClient, sio, ch, nil
+}
+
+func AttachRPCAdminClient(ctx context.Context, client *ssh.Client) (*AdminClient, *CloseHandler, error) {
+	rpcChannel, err := OpenRPCChannel(client)
+	if err != nil {
+		return nil, nil, err
+	}
+	ch := NewCloseHandler()
+	ch.Add(rpcChannel.Close)
+
+	grpcConn, err := CreateNewGRPCClient(ctx, rpcChannel)
+	if err != nil {
+		ch.Execute()
+		return nil, nil, err
+	}
+	ch.Add(grpcConn.Close)
+
+	adminClient := NewAdminClient(grpcConn)
+
+	_, err = adminClient.Auth()
+	if err != nil {
+		ch.Execute()
+		return nil, nil, err
+	}
+	return adminClient, ch, nil
 }

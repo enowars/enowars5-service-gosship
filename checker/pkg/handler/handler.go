@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	gsDatabase "gosship/pkg/database"
 	"strings"
 	"time"
 
@@ -67,6 +68,46 @@ func (h *Handler) sendMessageAndCheckResponse(ctx context.Context, sessIo *clien
 	}
 }
 
+func (h *Handler) sendDirectMessage(ctx context.Context, userA *client.User, userB *client.User, addr, msg string) error {
+	_, _, chA, err := client.CreateSSHSession(ctx, userA.Name, addr, userA.PrivateKey)
+	if err != nil {
+		return err
+	}
+	chA.Execute()
+
+	_, sessionIO, ch, err := client.CreateSSHSession(ctx, userB.Name, addr, userB.PrivateKey)
+	if err != nil {
+		return err
+	}
+	defer ch.Execute()
+
+	directMessage := fmt.Sprintf("/dm %s :wave: %s", userA.Name, msg)
+	checkStr := fmt.Sprintf("[dm][%s]:", userB.Name)
+	return h.sendMessageAndCheckResponse(ctx, sessionIO, directMessage, checkStr)
+}
+
+func (h *Handler) sendPrivateRoomMessage(ctx context.Context, userA *client.User, addr, room, password, msg string) error {
+	_, sessionIO, ch, err := client.CreateSSHSession(ctx, userA.Name, addr, userA.PrivateKey)
+	if err != nil {
+		return err
+	}
+	defer ch.Execute()
+
+	createRoom := fmt.Sprintf("/create %s %s", room, password)
+	err = h.sendMessageAndCheckResponse(ctx, sessionIO, createRoom, room+" was created")
+	if err != nil {
+		return err
+	}
+
+	flagMessage := fmt.Sprintf(":clown: %s", msg)
+	err = h.sendMessageAndCheckResponse(ctx, sessionIO, flagMessage, msg)
+	if err != nil {
+		return err
+	}
+
+	return h.sendMessageAndCheckResponse(ctx, sessionIO, "/j", "you are now in room default.")
+}
+
 func (h *Handler) putFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
 	userA, err := client.GenerateNewUser()
 	if err != nil {
@@ -77,27 +118,13 @@ func (h *Handler) putFlagDirectMessage(ctx context.Context, message *checker.Tas
 		return nil, err
 	}
 
-	_, _, chA, err := client.CreateSSHSession(ctx, userA.Name, message.Address, userA.PrivateKey)
-	if err != nil {
-		return nil, err
-	}
-	chA.Execute()
-
-	_, sessionIO, ch, err := client.CreateSSHSession(ctx, userB.Name, message.Address, userB.PrivateKey)
-	if err != nil {
-		return nil, err
-	}
-	defer ch.Execute()
-
-	directMessage := fmt.Sprintf("/dm %s :wave: %s", userA.Name, message.Flag)
-	checkStr := fmt.Sprintf("[dm][%s]:", userB.Name)
-	err = h.sendMessageAndCheckResponse(ctx, sessionIO, directMessage, checkStr)
-
+	err = h.sendDirectMessage(ctx, userA, userB, message.Address, message.Flag)
 	if err != nil {
 		return nil, err
 	}
 
-	err = h.db.PutFlagInfo(&database.FlagInfo{
+	err = h.db.PutInfo(&database.Info{
+		Method:      "flag",
 		Variant:     "dm",
 		TaskMessage: message,
 		UserA:       userA,
@@ -119,31 +146,14 @@ func (h *Handler) putFlagPrivateRoom(ctx context.Context, message *checker.TaskM
 		return nil, err
 	}
 
-	_, sessionIO, ch, err := client.CreateSSHSession(ctx, userA.Name, message.Address, userA.PrivateKey)
-	if err != nil {
-		return nil, err
-	}
-	defer ch.Execute()
-
 	room, password := client.GenerateRoomAndPassword()
-	createRoom := fmt.Sprintf("/create %s %s", room, password)
-	err = h.sendMessageAndCheckResponse(ctx, sessionIO, createRoom, room+" was created")
+	err = h.sendPrivateRoomMessage(ctx, userA, message.Address, room, password, message.Flag)
 	if err != nil {
 		return nil, err
 	}
 
-	flagMessage := fmt.Sprintf(":clown: %s", message.Flag)
-	err = h.sendMessageAndCheckResponse(ctx, sessionIO, flagMessage, message.Flag)
-	if err != nil {
-		return nil, err
-	}
-
-	err = h.sendMessageAndCheckResponse(ctx, sessionIO, "/j", "you are now in room default.")
-	if err != nil {
-		return nil, err
-	}
-
-	err = h.db.PutFlagInfo(&database.FlagInfo{
+	err = h.db.PutInfo(&database.Info{
+		Method:      "flag",
 		Variant:     "room",
 		TaskMessage: message,
 		UserA:       userA,
@@ -174,27 +184,67 @@ func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) (*c
 	return nil, ErrVariantNotFound
 }
 
+//func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+//	fi, err := h.db.GetInfo(message.TaskChainId)
+//	if err != nil {
+//		return nil, err
+//	}
+//	if fi.Variant != "dm" {
+//		return nil, ErrInvalidVariant
+//	}
+//	_, sessionIO, ch, err := client.CreateSSHSession(ctx, fi.UserA.Name, message.Address, fi.UserA.PrivateKey)
+//	if err != nil {
+//		return nil, err
+//	}
+//	defer ch.Execute()
+//	historyCmd := fmt.Sprintf("/history %s", fi.UserB.Name)
+//	err = h.sendMessageAndCheckResponse(ctx, sessionIO, historyCmd, message.Flag)
+//	if err != nil {
+//		h.log.Error(err)
+//		return &checker.ResultMessage{
+//			Result:  checker.ResultMumble,
+//			Message: "flag not found",
+//		}, err
+//	}
+//
+//	return &checker.ResultMessage{
+//		Result: checker.ResultOk,
+//	}, nil
+//}
+
 func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
-	fi, err := h.db.GetFlagInfo(message.TaskChainId)
+	fi, err := h.db.GetInfo(message.TaskChainId)
 	if err != nil {
 		return nil, err
 	}
 	if fi.Variant != "dm" {
 		return nil, ErrInvalidVariant
 	}
-	_, sessionIO, ch, err := client.CreateSSHSession(ctx, fi.UserA.Name, message.Address, fi.UserA.PrivateKey)
+	sshClient, _, ch, err := client.CreateSSHSession(ctx, fi.UserA.Name, message.Address, fi.UserA.PrivateKey)
 	if err != nil {
 		return nil, err
 	}
 	defer ch.Execute()
-	historyCmd := fmt.Sprintf("/history %s", fi.UserB.Name)
-	err = h.sendMessageAndCheckResponse(ctx, sessionIO, historyCmd, message.Flag)
+
+	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient)
 	if err != nil {
-		h.log.Error(err)
+		return nil, err
+	}
+	defer chRpc.Execute()
+
+	found := false
+	err = adminClient.DumpDirectMessages(fi.UserA.Name, func(entry *gsDatabase.MessageEntry) {
+		found = found || strings.Contains(entry.Body, message.Flag)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if !found {
 		return &checker.ResultMessage{
 			Result:  checker.ResultMumble,
 			Message: "flag not found",
-		}, err
+		}, nil
 	}
 
 	return &checker.ResultMessage{
@@ -203,7 +253,7 @@ func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.Tas
 }
 
 func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
-	fi, err := h.db.GetFlagInfo(message.TaskChainId)
+	fi, err := h.db.GetInfo(message.TaskChainId)
 	if err != nil {
 		return nil, err
 	}
@@ -216,8 +266,8 @@ func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *checker.TaskM
 	}
 	defer ch.Execute()
 
-	historyCmd := fmt.Sprintf("/join %s %s", fi.Room, fi.Password)
-	err = h.sendMessageAndCheckResponse(ctx, sessionIO, historyCmd, message.Flag)
+	joinCmd := fmt.Sprintf("/join %s %s", fi.Room, fi.Password)
+	err = h.sendMessageAndCheckResponse(ctx, sessionIO, joinCmd, message.Flag)
 	if err != nil {
 		h.log.Error(err)
 		return &checker.ResultMessage{

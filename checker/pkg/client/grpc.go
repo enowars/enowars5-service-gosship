@@ -9,8 +9,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-func CreateNewGRPCClient(channel ssh.Channel) (*grpc.ClientConn, error) {
-	grpcConn, err := grpc.Dial("", grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
+func CreateNewGRPCClient(ctx context.Context, channel ssh.Channel) (*grpc.ClientConn, error) {
+	grpcConn, err := grpc.DialContext(ctx, "", grpc.WithContextDialer(func(ctx context.Context, s string) (net.Conn, error) {
 		return &sshnet.Conn{Channel: channel}, nil
 	}), grpc.WithInsecure())
 	if err != nil {

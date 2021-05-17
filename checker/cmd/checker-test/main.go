@@ -24,7 +24,7 @@ func run(signer ssh.Signer) error {
 	}
 	defer rpcChannel.Close()
 
-	grpcConn, err := client.CreateNewGRPCClient(rpcChannel)
+	grpcConn, err := client.CreateNewGRPCClient(context.Background(), rpcChannel)
 	if err != nil {
 		return err
 	}
