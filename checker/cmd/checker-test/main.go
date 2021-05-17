@@ -2,6 +2,9 @@ package main
 
 import (
 	"checker/pkg/client"
+	"context"
+	"fmt"
+	"gosship/pkg/database"
 	"log"
 	"os"
 
@@ -9,7 +12,7 @@ import (
 )
 
 func run(signer ssh.Signer) error {
-	sshClient, err := client.GetSSHClient("client", "localhost", signer)
+	sshClient, err := client.GetSSHClient(context.Background(), "client", "localhost", signer)
 	if err != nil {
 		return err
 	}
@@ -34,7 +37,9 @@ func run(signer ssh.Signer) error {
 		return err
 	}
 	log.Printf("logged in with %s", token)
-	err = adminClient.SendMessageToRoom("default", "hello from rpc :wave:")
+	err = adminClient.DumpDirectMessages("chris", func(entry *database.MessageEntry) {
+		fmt.Println(entry)
+	})
 	if err != nil {
 		return err
 	}
@@ -56,51 +61,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	//_, privateKey, err := ed25519.GenerateKey(rand.Reader)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-
-	// session stuff
-	//session, err := client.NewSession()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-
-	//out, err := session.StdoutPipe()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//in, err := session.StdinPipe()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//err = session.RequestPty("xterm", 40, 80, ssh.TerminalModes{
-	//	ssh.ECHO:  0,
-	//	ssh.IGNCR: 1,
-	//})
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//err = session.Shell()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//fmt.Fprintf(in, ":clown:\n\r")
-	//fmt.Fprintf(in, "/history chris\n\r")
-	//done := make(chan struct{})
-	//go func() {
-	//	outScanner := bufio.NewScanner(out)
-	//	for outScanner.Scan() {
-	//		fmt.Println(outScanner.Text())
-	//	}
-	//	close(done)
-	//}()
-	//c := make(chan os.Signal, 1)
-	//signal.Notify(c, os.Interrupt)
-	//<-c
-	//log.Println("exiting...")
-	//session.Close()
-	//<-done
 }

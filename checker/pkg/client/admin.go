@@ -70,8 +70,11 @@ func (a *AdminClient) SendMessageToRoom(room, message string) error {
 	return nil
 }
 
-func (a *AdminClient) DumpMessages(emit func(entry *database.MessageEntry)) error {
-	stream, err := a.svc.DumpMessages(context.Background(), &admin.DumpMessages_Request{SessionToken: a.SessionToken})
+func (a *AdminClient) DumpDirectMessages(username string, emit func(entry *database.MessageEntry)) error {
+	stream, err := a.svc.DumpDirectMessages(context.Background(), &admin.DumpDirectMessages_Request{
+		SessionToken: a.SessionToken,
+		Username:     username,
+	})
 	if err != nil {
 		return err
 	}
