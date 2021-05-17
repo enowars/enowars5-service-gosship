@@ -362,14 +362,25 @@ func (h *Host) HasRoom(room string) bool {
 func (h *Host) CreateRoom(room, password string) error {
 	h.roomsMu.Lock()
 	defer h.roomsMu.Unlock()
+	_, ok := h.Rooms[room]
+	if ok {
+		return fmt.Errorf("room %s already exist", room)
+	}
 	h.Rooms[room] = password
 	return h.Database.SetRoomConfig(&database.RoomConfigEntry{Rooms: h.Rooms})
 }
 
-func (h *Host) CheckRoomPassword(room, password string) bool {
+func (h *Host) CheckRoomPassword(room, password string) error {
 	h.roomsMu.RLock()
 	defer h.roomsMu.RUnlock()
-	return h.Rooms[room] == password
+	_, ok := h.Rooms[room]
+	if !ok {
+		return fmt.Errorf("room %s does not exist", room)
+	}
+	if h.Rooms[room] != password {
+		return fmt.Errorf("invalid password")
+	}
+	return nil
 }
 
 func (h *Host) JoinRoomAnnouncement(u *User) {
