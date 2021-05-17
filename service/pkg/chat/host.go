@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gosship/pkg/database"
 	"io"
+	"strings"
 	"sync"
 
 	"github.com/gliderlabs/ssh"
@@ -95,7 +96,12 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 			return err
 		}
 	}
-	err = u.WriteLine(emoji.Sprintf("%s\n\n:unicorn:Welcome %s! You are now in room %s.\n", aurora.Green(title), aurora.Magenta(u.Name), aurora.Blue(u.CurrentRoom)))
+
+	var welcomeMessage strings.Builder
+	welcomeMessage.WriteString(aurora.Sprintf("%s\n\n", aurora.Green(title)))
+	welcomeMessage.WriteString(aurora.Sprintf(":unicorn:welcome %s!\n", u.RenderName(true)))
+	welcomeMessage.WriteString(aurora.Sprintf("you are now in room %s and %s\n", aurora.Blue(u.CurrentRoom), h.ServerInfo()))
+	err = u.WriteLine(emoji.Sprint(welcomeMessage.String()))
 	if err != nil {
 		return err
 	}
@@ -384,11 +390,36 @@ func (h *Host) CheckRoomPassword(room, password string) error {
 }
 
 func (h *Host) JoinRoomAnnouncement(u *User) {
-	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s joined the room.", u.RenderName()))
+	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s joined the room.", u.RenderName(false)))
 }
 
 func (h *Host) LeftRoomAnnouncement(u *User) {
-	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s left the room.", u.RenderName()))
+	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s left the room.", u.RenderName(false)))
+}
+
+func (h *Host) ServerInfo() string {
+	h.usersMu.RLock()
+	userCount := len(h.users)
+	h.usersMu.RUnlock()
+
+	verb := "are"
+	usersString := "users"
+	if userCount == 1 {
+		verb = "is"
+		usersString = "user"
+	}
+	return aurora.Sprintf("there %s currently %d %s online.", verb, aurora.Cyan(userCount), usersString)
+}
+
+func (h *Host) ListUsersForUser(from *User) error {
+	h.usersMu.RLock()
+	defer h.usersMu.RUnlock()
+	for _, u := range h.users {
+		if err := from.WriteLine(u.RenderListInfo(from.Name == u.Name)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (h *Host) ShowRecentMessages(u *User, skipAnnouncements bool) error {
@@ -412,6 +443,26 @@ func (h *Host) ShowRecentMessages(u *User, skipAnnouncements bool) error {
 
 		if err := u.WriteMessage(conMsg); err != nil {
 			h.Log.Error(err)
+		}
+	}
+	return nil
+}
+
+func (h *Host) ListRoomsForUser(from *User) error {
+	h.roomsMu.RLock()
+	defer h.roomsMu.RUnlock()
+	for room, password := range h.Rooms {
+		roomEmoji := ":speaking_head:"
+		if password != "" {
+			roomEmoji = ":closed_lock_with_key:"
+		}
+		bulletPoint := aurora.Yellow("*")
+		if room == from.CurrentRoom {
+			bulletPoint = aurora.Green("*")
+		}
+		roomInfo := emoji.Sprint(aurora.Sprintf("%s %s %s", bulletPoint, aurora.Blue(room), roomEmoji))
+		if err := from.WriteLine(roomInfo); err != nil {
+			return err
 		}
 	}
 	return nil

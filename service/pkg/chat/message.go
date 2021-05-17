@@ -98,13 +98,7 @@ func (p *PublicMessage) String() string {
 }
 
 func (p *PublicMessage) RenderFor(u *User) string {
-	var userName string
-	if u.Name == p.From.Name {
-		userName = aurora.Sprintf(aurora.Magenta(p.From.Name))
-	} else {
-		userName = p.From.RenderName()
-	}
-	return aurora.Sprintf("%s[%s]: %s", p.rawMessage.RenderTimestamp(), userName, p.rawMessage.RenderBody())
+	return aurora.Sprintf("%s[%s]: %s", p.rawMessage.RenderTimestamp(), p.From.RenderName(u.Name == p.From.Name), p.rawMessage.RenderBody())
 }
 
 type DirectMessage struct {
@@ -119,13 +113,7 @@ func (d *DirectMessage) String() string {
 }
 
 func (d *DirectMessage) RenderFor(u *User) string {
-	var userName string
-	if u.Name == d.From.Name {
-		userName = aurora.Sprintf(aurora.Magenta(d.From.Name))
-	} else {
-		userName = d.From.RenderName()
-	}
-	return aurora.Sprintf("%s%s[%s]: %s", d.rawMessage.RenderTimestamp(), aurora.Yellow("[dm]"), userName, d.rawMessage.RenderBody())
+	return aurora.Sprintf("%s%s[%s]: %s", d.rawMessage.RenderTimestamp(), aurora.Yellow("[dm]"), d.From.RenderName(u.Name == d.From.Name), d.rawMessage.RenderBody())
 }
 
 type CommandMessage struct {
