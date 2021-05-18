@@ -48,7 +48,7 @@ jobs:
           docker-compose up -d
       - name: Start checker
         run: |
-          cd checker-rs
+          cd checker
           docker-compose up -d
       - name: Obtain docker host ip
         run: |
