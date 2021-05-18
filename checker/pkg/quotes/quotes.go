@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"io"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -22,6 +23,7 @@ type Quote struct {
 }
 
 var allQuotes = make([]*Quote, 0)
+var pRandMu sync.Mutex
 var pRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 func init() {
@@ -43,5 +45,7 @@ func init() {
 }
 
 func GetRandom() *Quote {
+	pRandMu.Lock()
+	defer pRandMu.Unlock()
 	return allQuotes[pRand.Intn(len(allQuotes))]
 }
