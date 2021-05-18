@@ -55,7 +55,7 @@ func (db *Database) PutEntry(fi *Entry) error {
 	if err != nil {
 		return err
 	}
-	db.log.Println(string(data)) //debug
+	db.log.Printf("put entry: %s", fi.TaskMessage.TaskChainId)
 	entry := badger.NewEntry([]byte(fi.TaskMessage.TaskChainId), data)
 	return db.db.Update(func(txn *badger.Txn) error {
 		return txn.SetEntry(entry)
@@ -63,6 +63,7 @@ func (db *Database) PutEntry(fi *Entry) error {
 }
 
 func (db *Database) GetEntry(taskChainId string) (*Entry, error) {
+	db.log.Printf("get entry: %s", taskChainId)
 	var fi Entry
 	err := db.db.View(func(txn *badger.Txn) error {
 		get, err := txn.Get([]byte(taskChainId))
