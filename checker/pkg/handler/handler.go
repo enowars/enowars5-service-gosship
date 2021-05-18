@@ -28,6 +28,7 @@ var serviceInfo = &checker.InfoMessage{
 var ErrVariantIdOutOfRange = errors.New("variantId out of range")
 var ErrVariantNotFound = errors.New("variant not found")
 var ErrInvalidVariant = errors.New("invalid variant database entry")
+var ErrResponseNotFoundTimeout = errors.New("the response was not received after a certain timeout")
 
 type Handler struct {
 	log *logrus.Logger
@@ -63,6 +64,8 @@ func (h *Handler) sendMessageAndCheckResponse(ctx context.Context, sessIo *clien
 	}()
 
 	select {
+	case <-time.After(time.Second * 3):
+		return ErrResponseNotFoundTimeout
 	case <-ctx.Done():
 		return ctx.Err()
 	case err := <-errCh:
@@ -109,19 +112,19 @@ func (h *Handler) sendPrivateRoomMessage(ctx context.Context, userA *client.User
 	return h.sendMessageAndCheckResponse(ctx, sessionIO, "/j", "you are now in room default.")
 }
 
-func (h *Handler) putFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) putFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) error {
 	userA, err := client.GenerateNewUser()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	userB, err := client.GenerateNewUser()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = h.sendDirectMessage(ctx, userA, userB, message.Address, message.Flag)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = h.db.PutEntry(&database.Entry{
@@ -133,24 +136,22 @@ func (h *Handler) putFlagDirectMessage(ctx context.Context, message *checker.Tas
 	})
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &checker.ResultMessage{
-		Result: checker.ResultOk,
-	}, nil
+	return nil
 }
 
-func (h *Handler) putFlagPrivateRoom(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) putFlagPrivateRoom(ctx context.Context, message *checker.TaskMessage) error {
 	userA, err := client.GenerateNewUser()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	room, password := client.GenerateRoomAndPassword()
 	err = h.sendPrivateRoomMessage(ctx, userA, message.Address, room, password, message.Flag)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = h.db.PutEntry(&database.Entry{
@@ -163,17 +164,15 @@ func (h *Handler) putFlagPrivateRoom(ctx context.Context, message *checker.TaskM
 	})
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &checker.ResultMessage{
-		Result: checker.ResultOk,
-	}, nil
+	return nil
 }
 
-func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) error {
 	if message.VariantId >= serviceInfo.FlagVariants {
-		return nil, ErrVariantIdOutOfRange
+		return ErrVariantIdOutOfRange
 	}
 	switch message.VariantId {
 	case 0:
@@ -182,26 +181,26 @@ func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) (*c
 		return h.putFlagPrivateRoom(ctx, message)
 	}
 
-	return nil, ErrVariantNotFound
+	return ErrVariantNotFound
 }
 
-func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) error {
 	fi, err := h.db.GetEntry(message.TaskChainId)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if fi.Variant != "dm" {
-		return nil, ErrInvalidVariant
+		return ErrInvalidVariant
 	}
 	sshClient, _, ch, err := client.CreateSSHSession(ctx, fi.UserA.Name, message.Address, fi.UserA.PrivateKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer ch.Execute()
 
 	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer chRpc.Execute()
 
@@ -210,32 +209,27 @@ func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.Tas
 		found = found || strings.Contains(entry.Body, message.Flag)
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if !found {
-		return &checker.ResultMessage{
-			Result:  checker.ResultMumble,
-			Message: "flag not found",
-		}, nil
+		return checker.NewMumbleError(errors.New("flag not found"))
 	}
 
-	return &checker.ResultMessage{
-		Result: checker.ResultOk,
-	}, nil
+	return nil
 }
 
-func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *checker.TaskMessage) error {
 	fi, err := h.db.GetEntry(message.TaskChainId)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if fi.Variant != "room" {
-		return nil, ErrInvalidVariant
+		return ErrInvalidVariant
 	}
 	_, sessionIO, ch, err := client.CreateSSHSession(ctx, fi.UserA.Name, message.Address, fi.UserA.PrivateKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer ch.Execute()
 
@@ -243,20 +237,15 @@ func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *checker.TaskM
 	err = h.sendMessageAndCheckResponse(ctx, sessionIO, joinCmd, message.Flag)
 	if err != nil {
 		h.log.Error(err)
-		return &checker.ResultMessage{
-			Result:  checker.ResultMumble,
-			Message: "flag not found",
-		}, err
+		return checker.NewMumbleError(errors.New("flag not found"))
 	}
 
-	return &checker.ResultMessage{
-		Result: checker.ResultOk,
-	}, nil
+	return nil
 }
 
-func (h *Handler) GetFlag(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) GetFlag(ctx context.Context, message *checker.TaskMessage) error {
 	if message.VariantId >= serviceInfo.FlagVariants {
-		return nil, ErrVariantIdOutOfRange
+		return ErrVariantIdOutOfRange
 	}
 	switch message.VariantId {
 	case 0:
@@ -265,24 +254,24 @@ func (h *Handler) GetFlag(ctx context.Context, message *checker.TaskMessage) (*c
 		return h.getFlagPrivateRoom(ctx, message)
 	}
 
-	return nil, ErrVariantNotFound
+	return ErrVariantNotFound
 }
 
-func (h *Handler) putNoiseDirectMessage(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) putNoiseDirectMessage(ctx context.Context, message *checker.TaskMessage) error {
 	userA, err := client.GenerateNewUser()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	userB, err := client.GenerateNewUser()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	noise := client.GenerateNoise()
 
 	err = h.sendDirectMessage(ctx, userA, userB, message.Address, noise)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	err = h.db.PutEntry(&database.Entry{
@@ -295,84 +284,77 @@ func (h *Handler) putNoiseDirectMessage(ctx context.Context, message *checker.Ta
 	})
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &checker.ResultMessage{
-		Result: checker.ResultOk,
-	}, nil
+	return nil
 }
 
-func (h *Handler) getNoiseDirectMessage(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) getNoiseDirectMessage(ctx context.Context, message *checker.TaskMessage) error {
 	fi, err := h.db.GetEntry(message.TaskChainId)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if fi.Variant != "dm" {
-		return nil, ErrInvalidVariant
+		return ErrInvalidVariant
 	}
 	_, sessionIO, ch, err := client.CreateSSHSession(ctx, fi.UserA.Name, message.Address, fi.UserA.PrivateKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer ch.Execute()
 	historyCmd := fmt.Sprintf("/history %s", fi.UserB.Name)
 	err = h.sendMessageAndCheckResponse(ctx, sessionIO, historyCmd, fi.Noise)
 	if err != nil {
 		h.log.Error(err)
-		return &checker.ResultMessage{
-			Result:  checker.ResultMumble,
-			Message: "noise not found",
-		}, err
+		return checker.NewMumbleError(errors.New("noise not found"))
 	}
 
-	return &checker.ResultMessage{
-		Result: checker.ResultOk,
-	}, nil
+	return nil
 }
 
-func (h *Handler) PutNoise(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) PutNoise(ctx context.Context, message *checker.TaskMessage) error {
 	if message.VariantId >= serviceInfo.NoiseVariants {
-		return nil, ErrVariantIdOutOfRange
+		return ErrVariantIdOutOfRange
 	}
 	switch message.VariantId {
 	case 0:
 		return h.putNoiseDirectMessage(ctx, message)
 	}
 
-	return nil, ErrVariantNotFound
+	return ErrVariantNotFound
 }
 
-func (h *Handler) GetNoise(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) GetNoise(ctx context.Context, message *checker.TaskMessage) error {
 	if message.VariantId >= serviceInfo.NoiseVariants {
-		return nil, ErrVariantIdOutOfRange
+		return ErrVariantIdOutOfRange
 	}
 	switch message.VariantId {
 	case 0:
 		return h.getNoiseDirectMessage(ctx, message)
 	}
 
-	return nil, ErrVariantNotFound
+	return ErrVariantNotFound
 }
 
-func (h *Handler) havocRPC(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) havocRPC(ctx context.Context, message *checker.TaskMessage) error {
 	userA, err := client.GenerateNewUser()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	signer, err := ssh.NewSignerFromSigner(userA.PrivateKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	sshClient, err := client.GetSSHClient(ctx, "quote-bot", message.Address, signer)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer sshClient.Close()
 
 	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer chRpc.Execute()
 
@@ -380,24 +362,22 @@ func (h *Handler) havocRPC(ctx context.Context, message *checker.TaskMessage) (*
 	msg := fmt.Sprintf("[quote-bot]: \"%s\" - %s", quote.Text, quote.From)
 	err = adminClient.SendMessageToRoom("default", msg)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &checker.ResultMessage{
-		Result: checker.ResultOk,
-	}, nil
+	return nil
 }
 
-func (h *Handler) Havoc(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+func (h *Handler) Havoc(ctx context.Context, message *checker.TaskMessage) error {
 	if message.VariantId >= serviceInfo.HavocVariants {
-		return nil, ErrVariantIdOutOfRange
+		return ErrVariantIdOutOfRange
 	}
 	switch message.VariantId {
 	case 0:
 		return h.havocRPC(ctx, message)
 	}
 
-	return nil, ErrVariantNotFound
+	return ErrVariantNotFound
 }
 
 func (h *Handler) GetServiceInfo() *checker.InfoMessage {

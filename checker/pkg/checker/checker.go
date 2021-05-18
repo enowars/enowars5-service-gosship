@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -16,13 +17,43 @@ import (
 var indexPage []byte
 
 type Handler interface {
-	PutFlag(ctx context.Context, message *TaskMessage) (*ResultMessage, error)
-	GetFlag(ctx context.Context, message *TaskMessage) (*ResultMessage, error)
-	PutNoise(ctx context.Context, message *TaskMessage) (*ResultMessage, error)
-	GetNoise(ctx context.Context, message *TaskMessage) (*ResultMessage, error)
-	Havoc(ctx context.Context, message *TaskMessage) (*ResultMessage, error)
+	PutFlag(ctx context.Context, message *TaskMessage) error
+	GetFlag(ctx context.Context, message *TaskMessage) error
+	PutNoise(ctx context.Context, message *TaskMessage) error
+	GetNoise(ctx context.Context, message *TaskMessage) error
+	Havoc(ctx context.Context, message *TaskMessage) error
 	GetServiceInfo() *InfoMessage
 }
+
+type MumbleError interface {
+	error
+	Mumble() bool
+}
+
+func NewMumbleError(msg error) MumbleError {
+	return mumbleErrorMsg{msg}
+}
+
+type mumbleErrorMsg struct {
+	error
+}
+
+func (m mumbleErrorMsg) Mumble() bool { return true }
+
+type OfflineError interface {
+	error
+	Offline() bool
+}
+
+func NewOfflineError(msg error) OfflineError {
+	return offlineErrorMsg{msg}
+}
+
+type offlineErrorMsg struct {
+	error
+}
+
+func (m offlineErrorMsg) Offline() bool { return true }
 
 type Checker struct {
 	log     *logrus.Logger
@@ -52,14 +83,26 @@ func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *h
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	ctx, cancel := context.WithTimeout(request.Context(), time.Duration(tm.Timeout)*time.Millisecond)
 	defer cancel()
-	res, err := c.checker(ctx, &tm)
+
+	var res *ResultMessage
+	err := c.checker(ctx, &tm)
 	if err != nil {
 		c.log.Error(err)
-		res = &ResultMessage{
-			Result:  ResultError,
-			Message: err.Error(),
+		if err == context.DeadlineExceeded {
+			res = NewResultMessageOffline("timeout")
+		} else if _, ok := err.(net.Error); ok {
+			res = NewResultMessageOffline("network error")
+		} else if _, ok := err.(OfflineError); ok {
+			res = NewResultMessageOffline(err.Error())
+		} else if _, ok := err.(MumbleError); ok {
+			res = NewResultMessageMumble(err.Error())
+		} else {
+			res = NewResultMessageError(err.Error())
 		}
+	} else {
+		res = NewResultMessageOk()
 	}
+
 	if err := json.NewEncoder(writer).Encode(res); err != nil {
 		c.log.Error(err)
 	}
@@ -92,7 +135,7 @@ func (c *Checker) service(writer http.ResponseWriter, request *http.Request, _ h
 	}
 }
 
-func (c *Checker) checker(ctx context.Context, tm *TaskMessage) (*ResultMessage, error) {
+func (c *Checker) checker(ctx context.Context, tm *TaskMessage) error {
 	switch tm.Method {
 	case TaskMessageMethodPutFlag:
 		return c.handler.PutFlag(ctx, tm)
@@ -106,5 +149,5 @@ func (c *Checker) checker(ctx context.Context, tm *TaskMessage) (*ResultMessage,
 		return c.handler.Havoc(ctx, tm)
 	}
 
-	return nil, fmt.Errorf("method not allowed")
+	return fmt.Errorf("method not allowed")
 }

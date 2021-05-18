@@ -21,6 +21,33 @@ type ResultMessage struct {
 	Message string `json:"message"`
 }
 
+func NewResultMessageOk() *ResultMessage {
+	return &ResultMessage{
+		Result: ResultOk,
+	}
+}
+
+func NewResultMessageMumble(msg string) *ResultMessage {
+	return &ResultMessage{
+		Result:  ResultMumble,
+		Message: msg,
+	}
+}
+
+func NewResultMessageOffline(msg string) *ResultMessage {
+	return &ResultMessage{
+		Result:  ResultOffline,
+		Message: msg,
+	}
+}
+
+func NewResultMessageError(msg string) *ResultMessage {
+	return &ResultMessage{
+		Result:  ResultError,
+		Message: msg,
+	}
+}
+
 type TaskMessageMethod string
 
 var (
