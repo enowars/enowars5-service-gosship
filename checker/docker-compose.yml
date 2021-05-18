@@ -1,7 +1,9 @@
 version: '3'
 services:
   checker:
-    build: .
+    build:
+      context: ../
+      dockerfile: ./checker/Dockerfile
     volumes:
       - db-data:/app/db
     ports:
