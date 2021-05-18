@@ -5,3 +5,4 @@ service/db/
 checker/db/
 checker/checker
 checker/checker-test
+.envrc
