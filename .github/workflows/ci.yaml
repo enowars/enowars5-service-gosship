@@ -54,7 +54,7 @@ jobs:
         run: |
           enochecker_test
         env:
-          ENOCHECKER_TEST_SERVICE_ADDRESS: host.docker.internal
+          ENOCHECKER_TEST_SERVICE_ADDRESS: 172.17.0.1
           ENOCHECKER_TEST_CHECKER_ADDRESS: 127.0.0.1
           ENOCHECKER_TEST_CHECKER_PORT: 8080
   release:
