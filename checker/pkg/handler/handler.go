@@ -5,6 +5,7 @@ import (
 	"checker/pkg/checker"
 	"checker/pkg/client"
 	"checker/pkg/database"
+	"checker/pkg/quotes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/acarl005/stripansi"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/ssh"
 )
 
 var serviceInfo = &checker.InfoMessage{
@@ -81,7 +83,7 @@ func (h *Handler) sendDirectMessage(ctx context.Context, userA *client.User, use
 	}
 	defer ch.Execute()
 
-	directMessage := fmt.Sprintf("/dm %s :wave: %s", userA.Name, msg)
+	directMessage := fmt.Sprintf("/dm %s %s", userA.Name, msg)
 	checkStr := fmt.Sprintf("[dm][%s]:", userB.Name)
 	return h.sendMessageAndCheckResponse(ctx, sessionIO, directMessage, checkStr)
 }
@@ -99,8 +101,7 @@ func (h *Handler) sendPrivateRoomMessage(ctx context.Context, userA *client.User
 		return err
 	}
 
-	flagMessage := fmt.Sprintf(":clown: %s", msg)
-	err = h.sendMessageAndCheckResponse(ctx, sessionIO, flagMessage, msg)
+	err = h.sendMessageAndCheckResponse(ctx, sessionIO, msg, msg)
 	if err != nil {
 		return err
 	}
@@ -123,8 +124,8 @@ func (h *Handler) putFlagDirectMessage(ctx context.Context, message *checker.Tas
 		return nil, err
 	}
 
-	err = h.db.PutInfo(&database.Info{
-		Method:      "flag",
+	err = h.db.PutEntry(&database.Entry{
+		Type:        "flag",
 		Variant:     "dm",
 		TaskMessage: message,
 		UserA:       userA,
@@ -152,8 +153,8 @@ func (h *Handler) putFlagPrivateRoom(ctx context.Context, message *checker.TaskM
 		return nil, err
 	}
 
-	err = h.db.PutInfo(&database.Info{
-		Method:      "flag",
+	err = h.db.PutEntry(&database.Entry{
+		Type:        "flag",
 		Variant:     "room",
 		TaskMessage: message,
 		UserA:       userA,
@@ -184,36 +185,8 @@ func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) (*c
 	return nil, ErrVariantNotFound
 }
 
-//func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
-//	fi, err := h.db.GetInfo(message.TaskChainId)
-//	if err != nil {
-//		return nil, err
-//	}
-//	if fi.Variant != "dm" {
-//		return nil, ErrInvalidVariant
-//	}
-//	_, sessionIO, ch, err := client.CreateSSHSession(ctx, fi.UserA.Name, message.Address, fi.UserA.PrivateKey)
-//	if err != nil {
-//		return nil, err
-//	}
-//	defer ch.Execute()
-//	historyCmd := fmt.Sprintf("/history %s", fi.UserB.Name)
-//	err = h.sendMessageAndCheckResponse(ctx, sessionIO, historyCmd, message.Flag)
-//	if err != nil {
-//		h.log.Error(err)
-//		return &checker.ResultMessage{
-//			Result:  checker.ResultMumble,
-//			Message: "flag not found",
-//		}, err
-//	}
-//
-//	return &checker.ResultMessage{
-//		Result: checker.ResultOk,
-//	}, nil
-//}
-
 func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
-	fi, err := h.db.GetInfo(message.TaskChainId)
+	fi, err := h.db.GetEntry(message.TaskChainId)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +226,7 @@ func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.Tas
 }
 
 func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
-	fi, err := h.db.GetInfo(message.TaskChainId)
+	fi, err := h.db.GetEntry(message.TaskChainId)
 	if err != nil {
 		return nil, err
 	}
@@ -295,13 +268,76 @@ func (h *Handler) GetFlag(ctx context.Context, message *checker.TaskMessage) (*c
 	return nil, ErrVariantNotFound
 }
 
+func (h *Handler) putNoiseDirectMessage(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+	userA, err := client.GenerateNewUser()
+	if err != nil {
+		return nil, err
+	}
+	userB, err := client.GenerateNewUser()
+	if err != nil {
+		return nil, err
+	}
+
+	noise := client.GenerateNoise()
+
+	err = h.sendDirectMessage(ctx, userA, userB, message.Address, noise)
+	if err != nil {
+		return nil, err
+	}
+
+	err = h.db.PutEntry(&database.Entry{
+		Type:        "noise",
+		Variant:     "dm",
+		TaskMessage: message,
+		UserA:       userA,
+		UserB:       userB,
+		Noise:       noise,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &checker.ResultMessage{
+		Result: checker.ResultOk,
+	}, nil
+}
+
+func (h *Handler) getNoiseDirectMessage(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+	fi, err := h.db.GetEntry(message.TaskChainId)
+	if err != nil {
+		return nil, err
+	}
+	if fi.Variant != "dm" {
+		return nil, ErrInvalidVariant
+	}
+	_, sessionIO, ch, err := client.CreateSSHSession(ctx, fi.UserA.Name, message.Address, fi.UserA.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	defer ch.Execute()
+	historyCmd := fmt.Sprintf("/history %s", fi.UserB.Name)
+	err = h.sendMessageAndCheckResponse(ctx, sessionIO, historyCmd, fi.Noise)
+	if err != nil {
+		h.log.Error(err)
+		return &checker.ResultMessage{
+			Result:  checker.ResultMumble,
+			Message: "noise not found",
+		}, err
+	}
+
+	return &checker.ResultMessage{
+		Result: checker.ResultOk,
+	}, nil
+}
+
 func (h *Handler) PutNoise(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
 	if message.VariantId >= serviceInfo.NoiseVariants {
 		return nil, ErrVariantIdOutOfRange
 	}
 	switch message.VariantId {
 	case 0:
-		return nil, errors.New("not implemented")
+		return h.putNoiseDirectMessage(ctx, message)
 	}
 
 	return nil, ErrVariantNotFound
@@ -313,10 +349,43 @@ func (h *Handler) GetNoise(ctx context.Context, message *checker.TaskMessage) (*
 	}
 	switch message.VariantId {
 	case 0:
-		return nil, errors.New("not implemented")
+		return h.getNoiseDirectMessage(ctx, message)
 	}
 
 	return nil, ErrVariantNotFound
+}
+
+func (h *Handler) havocRPC(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
+	userA, err := client.GenerateNewUser()
+	if err != nil {
+		return nil, err
+	}
+	signer, err := ssh.NewSignerFromSigner(userA.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	sshClient, err := client.GetSSHClient(ctx, "quote-bot", message.Address, signer)
+	if err != nil {
+		return nil, err
+	}
+	defer sshClient.Close()
+
+	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient)
+	if err != nil {
+		return nil, err
+	}
+	defer chRpc.Execute()
+
+	quote := quotes.GetRandom()
+	msg := fmt.Sprintf("[quote-bot]: \"%s\" - %s", quote.Text, quote.From)
+	err = adminClient.SendMessageToRoom("default", msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &checker.ResultMessage{
+		Result: checker.ResultOk,
+	}, nil
 }
 
 func (h *Handler) Havoc(ctx context.Context, message *checker.TaskMessage) (*checker.ResultMessage, error) {
@@ -325,7 +394,7 @@ func (h *Handler) Havoc(ctx context.Context, message *checker.TaskMessage) (*che
 	}
 	switch message.VariantId {
 	case 0:
-		return nil, errors.New("not implemented")
+		return h.havocRPC(ctx, message)
 	}
 
 	return nil, ErrVariantNotFound

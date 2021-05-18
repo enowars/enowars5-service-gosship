@@ -38,6 +38,10 @@ func GenerateNewUser() (*User, error) {
 	}, nil
 }
 
+func GenerateNoise() string {
+	return randomdata.Paragraph()
+}
+
 type CloseHandler struct {
 	fns []func() error
 }

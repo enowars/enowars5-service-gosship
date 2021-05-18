@@ -37,18 +37,19 @@ func NewDatabase(log *logrus.Logger) (*Database, error) {
 	}, nil
 }
 
-type Info struct {
-	Method      string               `json:"method"`
+type Entry struct {
+	Type        string               `json:"type"`
 	Variant     string               `json:"variant"`
 	TaskMessage *checker.TaskMessage `json:"taskMessage"`
 	UserA       *client.User         `json:"userA"`
 	UserB       *client.User         `json:"userB"`
 	Room        string               `json:"room"`
 	Password    string               `json:"password"`
+	Noise       string               `json:"noise"`
 	Timestamp   time.Time            `json:"timestamp"`
 }
 
-func (db *Database) PutInfo(fi *Info) error {
+func (db *Database) PutEntry(fi *Entry) error {
 	fi.Timestamp = time.Now()
 	data, err := json.Marshal(fi)
 	if err != nil {
@@ -61,8 +62,8 @@ func (db *Database) PutInfo(fi *Info) error {
 	})
 }
 
-func (db *Database) GetInfo(taskChainId string) (*Info, error) {
-	var fi Info
+func (db *Database) GetEntry(taskChainId string) (*Entry, error) {
+	var fi Entry
 	err := db.db.View(func(txn *badger.Txn) error {
 		get, err := txn.Get([]byte(taskChainId))
 		if err != nil {
