@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"gosship/pkg/database"
 	"log"
-	"os"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -18,25 +17,13 @@ func run(signer ssh.Signer) error {
 	}
 	defer sshClient.Close()
 
-	rpcChannel, err := client.OpenRPCChannel(sshClient)
+	adminClient, ch, err := client.AttachRPCAdminClient(context.Background(), sshClient)
 	if err != nil {
 		return err
 	}
-	defer rpcChannel.Close()
+	defer ch.Execute()
 
-	grpcConn, err := client.CreateNewGRPCClient(context.Background(), rpcChannel)
-	if err != nil {
-		return err
-	}
-	defer grpcConn.Close()
-
-	adminClient := client.NewAdminClient(grpcConn)
-
-	token, err := adminClient.Auth()
-	if err != nil {
-		return err
-	}
-	log.Printf("logged in with %s", token)
+	log.Printf("logged in with %s", adminClient.SessionToken)
 	err = adminClient.DumpDirectMessages("chris", func(entry *database.MessageEntry) {
 		fmt.Println(entry)
 	})
@@ -47,12 +34,12 @@ func run(signer ssh.Signer) error {
 }
 
 func main() {
-	log.Println("reading private key...")
-	data, err := os.ReadFile("./client-key")
+	user, err := client.GenerateNewUser()
 	if err != nil {
 		log.Fatal(err)
 	}
-	signer, err := ssh.ParsePrivateKey(data)
+
+	signer, err := ssh.NewSignerFromSigner(user.PrivateKey)
 	if err != nil {
 		log.Fatal(err)
 	}
