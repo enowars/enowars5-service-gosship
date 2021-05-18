@@ -213,7 +213,7 @@ func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.Tas
 	}
 
 	if !found {
-		return checker.NewMumbleError(errors.New("flag not found"))
+		return checker.ErrFlagNotFound
 	}
 
 	return nil
@@ -237,7 +237,7 @@ func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *checker.TaskM
 	err = h.sendMessageAndCheckResponse(ctx, sessionIO, joinCmd, message.Flag)
 	if err != nil {
 		h.log.Error(err)
-		return checker.NewMumbleError(errors.New("flag not found"))
+		return checker.ErrFlagNotFound
 	}
 
 	return nil
@@ -307,7 +307,7 @@ func (h *Handler) getNoiseDirectMessage(ctx context.Context, message *checker.Ta
 	err = h.sendMessageAndCheckResponse(ctx, sessionIO, historyCmd, fi.Noise)
 	if err != nil {
 		h.log.Error(err)
-		return checker.NewMumbleError(errors.New("noise not found"))
+		return checker.ErrNoiseNotFound
 	}
 
 	return nil

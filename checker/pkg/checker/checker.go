@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -40,20 +41,8 @@ type mumbleErrorMsg struct {
 
 func (m mumbleErrorMsg) Mumble() bool { return true }
 
-type OfflineError interface {
-	error
-	Offline() bool
-}
-
-func NewOfflineError(msg error) OfflineError {
-	return offlineErrorMsg{msg}
-}
-
-type offlineErrorMsg struct {
-	error
-}
-
-func (m offlineErrorMsg) Offline() bool { return true }
+var ErrFlagNotFound = NewMumbleError(errors.New("flag not found"))
+var ErrNoiseNotFound = NewMumbleError(errors.New("flag not found"))
 
 type Checker struct {
 	log     *logrus.Logger
@@ -92,8 +81,6 @@ func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *h
 			res = NewResultMessageOffline("timeout")
 		} else if _, ok := err.(net.Error); ok {
 			res = NewResultMessageOffline("network error")
-		} else if _, ok := err.(OfflineError); ok {
-			res = NewResultMessageOffline(err.Error())
 		} else if _, ok := err.(MumbleError); ok {
 			res = NewResultMessageMumble(err.Error())
 		} else {
