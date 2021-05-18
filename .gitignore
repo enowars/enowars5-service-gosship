@@ -3,3 +3,5 @@ service/gosship
 server.key
 service/db/
 checker/db/
+checker/checker
+checker/checker-test
