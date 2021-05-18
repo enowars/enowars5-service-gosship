@@ -6,3 +6,4 @@ checker/db/
 checker/checker
 checker/checker-test
 .envrc
+checker/session-exploit
