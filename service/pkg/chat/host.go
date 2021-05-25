@@ -144,7 +144,6 @@ func (h *Host) Serve() {
 	for msg := range h.msgChan {
 		var msgEntry database.MessageEntry
 		skipSave := false
-		h.Log.Println(msg.String()) //TODO: cleanup
 		switch v := msg.(type) {
 		case *PublicMessage:
 			msgEntry.Type = database.MessageType_PUBLIC

@@ -26,10 +26,6 @@ func run(log *logrus.Logger) error {
 	}
 	defer db.Close()
 
-	//TODO: cleanup
-	log.Println("resetting database...")
-	db.ResetExceptConfig()
-
 	log.Println("loading/generating server key...")
 	signer, err := utils.GetHostSigner(db)
 	if err != nil {

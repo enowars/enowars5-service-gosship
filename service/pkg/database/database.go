@@ -8,7 +8,6 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/google/uuid"
-	"github.com/logrusorgru/aurora/v3"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
@@ -224,7 +223,7 @@ func (m MessageEntries) Swap(i, j int) {
 
 func (db *Database) GetRecentMessagesForUserAndRoom(uid, room string) (MessageEntries, error) {
 	res := make(MessageEntries, 0)
-	pastMarker := time.Now().Add(-10 * time.Minute)
+	pastMarker := time.Now().Add(-12 * time.Minute)
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
@@ -317,87 +316,6 @@ func (db *Database) GetUserById(id string) (*UserEntry, error) {
 	return &ue, nil
 }
 
-//TODO: cleanup
-func (db *Database) DumpToLog() {
-	err := db.db.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			err := item.Value(func(val []byte) error {
-				var logEntry string
-				switch item.UserMeta() {
-				case TypeConfigEntry:
-					var ce ConfigEntry
-					err := proto.Unmarshal(val, &ce)
-					if err != nil {
-						db.log.Error(err)
-						return nil
-					}
-					logEntry = aurora.Sprintf("%s: %s", aurora.Red("TypeConfigEntry"), ce.String())
-				case TypeUserEntry:
-					var ue UserEntry
-					err := proto.Unmarshal(val, &ue)
-					if err != nil {
-						db.log.Error(err)
-						return nil
-					}
-					logEntry = aurora.Sprintf("%s: %s", aurora.Red("TypeUserEntry"), ue.String())
-				case TypeMessageEntry:
-					var me MessageEntry
-					err := proto.Unmarshal(val, &me)
-					if err != nil {
-						db.log.Error(err)
-						return nil
-					}
-					logEntry = aurora.Sprintf("%s: %s", aurora.Red("TypeMessageEntry"), me.String())
-				default:
-					logEntry = aurora.Sprintf(aurora.Red("unknown type"))
-				}
-				db.log.Println(logEntry)
-				return nil
-			})
-			if err != nil {
-				db.log.Error(err)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		db.log.Error(err)
-	}
-}
-
-//TODO: cleanup
-func (db *Database) DumpMessages(emit func(*MessageEntry) error) error {
-	err := db.db.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			if item.UserMeta() != TypeMessageEntry {
-				continue
-			}
-			err := item.Value(func(val []byte) error {
-				var me MessageEntry
-				err := proto.Unmarshal(val, &me)
-				if err != nil {
-					return err
-				}
-				return emit(&me)
-			})
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (db *Database) DumpDirectMessages(username string, emit func(*MessageEntry) error) error {
 	id, _, err := db.FindUserByPredicate(func(entry *UserEntry) bool {
 		return entry.Name == username
@@ -442,27 +360,6 @@ func (db *Database) DumpDirectMessages(username string, emit func(*MessageEntry)
 		return err
 	}
 	return nil
-}
-
-func (db *Database) ResetExceptConfig() {
-	err := db.db.Update(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			if item.UserMeta() == TypeConfigEntry {
-				continue
-			}
-			err := txn.Delete(item.Key())
-			if err != nil {
-				db.log.Error(err)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		db.log.Error(err)
-	}
 }
 
 func (db *Database) Close() {
