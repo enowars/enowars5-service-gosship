@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -31,13 +32,17 @@ func main() {
 		}
 	}()
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	<-c
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	<-ctx.Done()
+	stop()
+
 	log.Println("stopping server...")
-	if err := server.Shutdown(context.Background()); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := server.Shutdown(ctx); err != nil {
 		log.Error(err)
 	}
+
 	log.Println("closing database...")
 	db.Close()
 }
