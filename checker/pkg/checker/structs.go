@@ -1,10 +1,11 @@
 package checker
 
 type InfoMessage struct {
-	ServiceName   string `json:"serviceName"`
-	FlagVariants  uint64 `json:"flagVariants"`
-	NoiseVariants uint64 `json:"noiseVariants"`
-	HavocVariants uint64 `json:"havocVariants"`
+	ServiceName     string `json:"serviceName"`
+	FlagVariants    uint64 `json:"flagVariants"`
+	NoiseVariants   uint64 `json:"noiseVariants"`
+	HavocVariants   uint64 `json:"havocVariants"`
+	ExploitVariants uint64 `json:"exploitVariants"`
 }
 
 type Result string
@@ -17,8 +18,10 @@ var (
 )
 
 type ResultMessage struct {
-	Result  Result `json:"result"`
-	Message string `json:"message"`
+	Result     Result `json:"result"`
+	Message    string `json:"message"`
+	AttackInfo string `json:"attackInfo,omitempty"`
+	Flag       string `json:"flag,omitempty"`
 }
 
 func NewResultMessageOk() *ResultMessage {
@@ -56,6 +59,7 @@ var (
 	TaskMessageMethodPutNoise = TaskMessageMethod("putnoise")
 	TaskMessageMethodGetNoise = TaskMessageMethod("getnoise")
 	TaskMessageMethodHavoc    = TaskMessageMethod("havoc")
+	TaskMessageMethodExploit  = TaskMessageMethod("exploit")
 )
 
 type TaskMessage struct {
@@ -71,4 +75,7 @@ type TaskMessage struct {
 	Timeout        uint64            `json:"timeout"`
 	RoundLength    uint64            `json:"roundLength"`
 	TaskChainId    string            `json:"taskChainId"`
+	FlagRegex      string            `json:"flagRegex"`
+	FlagHash       string            `json:"flagHash"`
+	AttackInfo     string            `json:"attackInfo"`
 }

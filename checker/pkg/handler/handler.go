@@ -19,10 +19,11 @@ import (
 )
 
 var serviceInfo = &checker.InfoMessage{
-	ServiceName:   "gosship",
-	FlagVariants:  2,
-	NoiseVariants: 1,
-	HavocVariants: 1,
+	ServiceName:     "gosship",
+	FlagVariants:    2,
+	NoiseVariants:   1,
+	HavocVariants:   1,
+	ExploitVariants: 0,
 }
 
 var ErrVariantIdOutOfRange = errors.New("variantId out of range")
@@ -377,6 +378,13 @@ func (h *Handler) Havoc(ctx context.Context, message *checker.TaskMessage) error
 		return h.havocRPC(ctx, message)
 	}
 
+	return ErrVariantNotFound
+}
+
+func (h *Handler) Exploit(ctx context.Context, message *checker.TaskMessage) error {
+	if message.VariantId >= serviceInfo.ExploitVariants {
+		return ErrVariantIdOutOfRange
+	}
 	return ErrVariantNotFound
 }
 

@@ -23,6 +23,7 @@ type Handler interface {
 	PutNoise(ctx context.Context, message *TaskMessage) error
 	GetNoise(ctx context.Context, message *TaskMessage) error
 	Havoc(ctx context.Context, message *TaskMessage) error
+	Exploit(ctx context.Context, message *TaskMessage) error
 	GetServiceInfo() *InfoMessage
 }
 
@@ -134,6 +135,8 @@ func (c *Checker) checker(ctx context.Context, tm *TaskMessage) error {
 		return c.handler.GetNoise(ctx, tm)
 	case TaskMessageMethodHavoc:
 		return c.handler.Havoc(ctx, tm)
+	case TaskMessageMethodExploit:
+		return c.handler.Exploit(ctx, tm)
 	}
 
 	return fmt.Errorf("method not allowed")
