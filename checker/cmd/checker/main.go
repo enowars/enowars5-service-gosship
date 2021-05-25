@@ -22,7 +22,7 @@ func main() {
 
 	checkerHandler := handler.New(log, db)
 	server := &http.Server{
-		Addr:    ":8080",
+		Addr:    ":2002",
 		Handler: checker.NewChecker(log, checkerHandler),
 	}
 	go func() {

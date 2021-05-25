@@ -7,7 +7,7 @@ services:
     volumes:
       - db-data:/app/db
     ports:
-      - "8080:8080"
+      - "2002:2002"
 
 volumes:
   db-data:

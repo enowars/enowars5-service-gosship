@@ -56,7 +56,7 @@ jobs:
         env:
           ENOCHECKER_TEST_SERVICE_ADDRESS: 172.17.0.1
           ENOCHECKER_TEST_CHECKER_ADDRESS: 127.0.0.1
-          ENOCHECKER_TEST_CHECKER_PORT: 8080
+          ENOCHECKER_TEST_CHECKER_PORT: 2002
   release:
     runs-on: self-hosted
     needs: test
