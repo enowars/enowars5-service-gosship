@@ -93,7 +93,7 @@ func run(log *logrus.Logger) error {
 }
 
 func main() {
-	log := logger.New()
+	log := logger.New(logrus.InfoLevel)
 	if err := run(log); err != nil {
 		log.Fatal(err)
 	}
