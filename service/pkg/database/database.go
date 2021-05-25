@@ -466,6 +466,7 @@ func (db *Database) ResetExceptConfig() {
 }
 
 func (db *Database) Close() {
+	db.log.Println("closing database...")
 	err := db.db.Close()
 	if err != nil {
 		db.log.Error(err)
