@@ -17,7 +17,7 @@ func run(signer ssh.Signer) error {
 	}
 	defer sshClient.Close()
 
-	adminClient, ch, err := client.AttachRPCAdminClient(context.Background(), sshClient)
+	adminClient, ch, err := client.AttachRPCAdminClient(context.Background(), sshClient, false)
 	if err != nil {
 		return err
 	}
