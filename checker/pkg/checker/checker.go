@@ -17,13 +17,26 @@ import (
 //go:embed post.html
 var indexPage []byte
 
+type HandlerInfo struct {
+	AttackInfo string
+	Flag       string
+}
+
+func NewExploitInfo(flag string) *HandlerInfo {
+	return &HandlerInfo{Flag: flag}
+}
+
+func NewPutFlagInfo(attackInfo string) *HandlerInfo {
+	return &HandlerInfo{AttackInfo: attackInfo}
+}
+
 type Handler interface {
-	PutFlag(ctx context.Context, message *TaskMessage) error
+	PutFlag(ctx context.Context, message *TaskMessage) (*HandlerInfo, error)
 	GetFlag(ctx context.Context, message *TaskMessage) error
 	PutNoise(ctx context.Context, message *TaskMessage) error
 	GetNoise(ctx context.Context, message *TaskMessage) error
 	Havoc(ctx context.Context, message *TaskMessage) error
-	Exploit(ctx context.Context, message *TaskMessage) error
+	Exploit(ctx context.Context, message *TaskMessage) (*HandlerInfo, error)
 	GetServiceInfo() *InfoMessage
 }
 
@@ -75,7 +88,7 @@ func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *h
 	defer cancel()
 
 	var res *ResultMessage
-	err := c.checker(ctx, &tm)
+	hi, err := c.checker(ctx, &tm)
 	if err != nil {
 		c.log.Error(err)
 		if err == context.DeadlineExceeded {
@@ -89,8 +102,11 @@ func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *h
 		}
 	} else {
 		res = NewResultMessageOk()
+		if hi != nil {
+			res.AttackInfo = hi.AttackInfo
+			res.Flag = hi.Flag
+		}
 	}
-
 	if err := json.NewEncoder(writer).Encode(res); err != nil {
 		c.log.Error(err)
 	}
@@ -123,21 +139,21 @@ func (c *Checker) service(writer http.ResponseWriter, request *http.Request, _ h
 	}
 }
 
-func (c *Checker) checker(ctx context.Context, tm *TaskMessage) error {
+func (c *Checker) checker(ctx context.Context, tm *TaskMessage) (*HandlerInfo, error) {
 	switch tm.Method {
 	case TaskMessageMethodPutFlag:
 		return c.handler.PutFlag(ctx, tm)
 	case TaskMessageMethodGetFlag:
-		return c.handler.GetFlag(ctx, tm)
+		return nil, c.handler.GetFlag(ctx, tm)
 	case TaskMessageMethodPutNoise:
-		return c.handler.PutNoise(ctx, tm)
+		return nil, c.handler.PutNoise(ctx, tm)
 	case TaskMessageMethodGetNoise:
-		return c.handler.GetNoise(ctx, tm)
+		return nil, c.handler.GetNoise(ctx, tm)
 	case TaskMessageMethodHavoc:
-		return c.handler.Havoc(ctx, tm)
+		return nil, c.handler.Havoc(ctx, tm)
 	case TaskMessageMethodExploit:
 		return c.handler.Exploit(ctx, tm)
 	}
 
-	return fmt.Errorf("method not allowed")
+	return nil, fmt.Errorf("method not allowed")
 }

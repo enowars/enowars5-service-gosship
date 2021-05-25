@@ -23,7 +23,7 @@ var serviceInfo = &checker.InfoMessage{
 	FlagVariants:    2,
 	NoiseVariants:   1,
 	HavocVariants:   1,
-	ExploitVariants: 0,
+	ExploitVariants: 2,
 }
 
 var ErrVariantIdOutOfRange = errors.New("variantId out of range")
@@ -113,19 +113,19 @@ func (h *Handler) sendPrivateRoomMessage(ctx context.Context, userA *client.User
 	return h.sendMessageAndCheckResponse(ctx, sessionIO, "/j", "you are now in room default.")
 }
 
-func (h *Handler) putFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) error {
+func (h *Handler) putFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) (*checker.HandlerInfo, error) {
 	userA, err := client.GenerateNewUser()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	userB, err := client.GenerateNewUser()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = h.sendDirectMessage(ctx, userA, userB, message.Address, message.Flag)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = h.db.PutEntry(&database.Entry{
@@ -137,22 +137,22 @@ func (h *Handler) putFlagDirectMessage(ctx context.Context, message *checker.Tas
 	})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return checker.NewPutFlagInfo(userA.Name), nil
 }
 
-func (h *Handler) putFlagPrivateRoom(ctx context.Context, message *checker.TaskMessage) error {
+func (h *Handler) putFlagPrivateRoom(ctx context.Context, message *checker.TaskMessage) (*checker.HandlerInfo, error) {
 	userA, err := client.GenerateNewUser()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	room, password := client.GenerateRoomAndPassword()
 	err = h.sendPrivateRoomMessage(ctx, userA, message.Address, room, password, message.Flag)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = h.db.PutEntry(&database.Entry{
@@ -165,15 +165,15 @@ func (h *Handler) putFlagPrivateRoom(ctx context.Context, message *checker.TaskM
 	})
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return checker.NewPutFlagInfo(room), nil
 }
 
-func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) error {
+func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) (*checker.HandlerInfo, error) {
 	if message.VariantId >= serviceInfo.FlagVariants {
-		return ErrVariantIdOutOfRange
+		return nil, ErrVariantIdOutOfRange
 	}
 	switch message.VariantId {
 	case 0:
@@ -182,7 +182,7 @@ func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) err
 		return h.putFlagPrivateRoom(ctx, message)
 	}
 
-	return ErrVariantNotFound
+	return nil, ErrVariantNotFound
 }
 
 func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) error {
@@ -199,7 +199,7 @@ func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.Tas
 	}
 	defer ch.Execute()
 
-	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient)
+	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient, false)
 	if err != nil {
 		return err
 	}
@@ -353,7 +353,7 @@ func (h *Handler) havocRPC(ctx context.Context, message *checker.TaskMessage) er
 	}
 	defer sshClient.Close()
 
-	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient)
+	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient, false)
 	if err != nil {
 		return err
 	}
@@ -381,11 +381,25 @@ func (h *Handler) Havoc(ctx context.Context, message *checker.TaskMessage) error
 	return ErrVariantNotFound
 }
 
-func (h *Handler) Exploit(ctx context.Context, message *checker.TaskMessage) error {
+func (h *Handler) Exploit(ctx context.Context, message *checker.TaskMessage) (*checker.HandlerInfo, error) {
 	if message.VariantId >= serviceInfo.ExploitVariants {
-		return ErrVariantIdOutOfRange
+		return nil, ErrVariantIdOutOfRange
 	}
-	return ErrVariantNotFound
+	switch message.VariantId {
+	case 0:
+		flag, err := h.hijackAdminSession(ctx, message.AttackInfo, message.Address, message.FlagRegex)
+		if err != nil {
+			return nil, err
+		}
+		return checker.NewExploitInfo(flag), nil
+	case 1:
+		flag, err := h.hijackPrivateRoom(ctx, message.AttackInfo, message.Address, message.FlagRegex)
+		if err != nil {
+			return nil, err
+		}
+		return checker.NewExploitInfo(flag), nil
+	}
+	return nil, ErrVariantNotFound
 }
 
 func (h *Handler) GetServiceInfo() *checker.InfoMessage {

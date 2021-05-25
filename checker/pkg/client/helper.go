@@ -131,7 +131,7 @@ func CreateSSHSession(ctx context.Context, user, addr string, privateKey ed25519
 	return sshClient, sio, ch, nil
 }
 
-func AttachRPCAdminClient(ctx context.Context, client *ssh.Client) (*AdminClient, *CloseHandler, error) {
+func AttachRPCAdminClient(ctx context.Context, client *ssh.Client, noAuth bool) (*AdminClient, *CloseHandler, error) {
 	rpcChannel, err := OpenRPCChannel(client)
 	if err != nil {
 		return nil, nil, err
@@ -147,6 +147,10 @@ func AttachRPCAdminClient(ctx context.Context, client *ssh.Client) (*AdminClient
 	ch.Add(grpcConn.Close)
 
 	adminClient := NewAdminClient(grpcConn)
+
+	if noAuth {
+		return adminClient, ch, nil
+	}
 
 	_, err = adminClient.Auth()
 	if err != nil {
