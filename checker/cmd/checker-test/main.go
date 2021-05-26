@@ -2,9 +2,9 @@ package main
 
 import (
 	"checker/pkg/client"
+	"checker/service/database"
 	"context"
 	"fmt"
-	"gosship/pkg/database"
 	"log"
 
 	"golang.org/x/crypto/ssh"

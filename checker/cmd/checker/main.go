@@ -5,16 +5,20 @@ import (
 	"checker/pkg/database"
 	"checker/pkg/handler"
 	"context"
-	"gosship/pkg/logger"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	log := logger.New()
+	log := logrus.New()
+	log.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp: true,
+	})
 	db, err := database.NewDatabase(log)
 	if err != nil {
 		log.Fatal(err)

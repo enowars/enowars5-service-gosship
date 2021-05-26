@@ -10,7 +10,5 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	golang.org/x/crypto v0.0.0-20210506145944-38f3c27a63bf
 	google.golang.org/grpc v1.37.0
-	gosship v0.0.0
+	google.golang.org/protobuf v1.25.0
 )
-
-replace gosship v0.0.0 => ../service

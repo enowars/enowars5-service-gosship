@@ -6,10 +6,10 @@ import (
 	"checker/pkg/client"
 	"checker/pkg/database"
 	"checker/pkg/quotes"
+	gsDatabase "checker/service/database"
 	"context"
 	"errors"
 	"fmt"
-	gsDatabase "gosship/pkg/database"
 	"strings"
 	"time"
 

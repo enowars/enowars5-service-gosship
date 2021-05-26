@@ -1,11 +1,11 @@
 package client
 
 import (
+	"checker/service/admin"
+	"checker/service/database"
 	"context"
 	"crypto/ed25519"
 	"encoding/hex"
-	"gosship/pkg/database"
-	"gosship/pkg/rpc/admin"
 	"io"
 
 	"google.golang.org/grpc"

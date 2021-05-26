@@ -1,8 +1,8 @@
 package client
 
 import (
+	"checker/service/sshnet"
 	"context"
-	"gosship/pkg/sshnet"
 	"net"
 
 	"golang.org/x/crypto/ssh"
