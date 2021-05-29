@@ -65,8 +65,9 @@ func (h *Handler) sendMessageAndCheckResponse(ctx context.Context, sessIo *clien
 	}()
 
 	select {
-	case <-time.After(time.Second * 3):
-		return ErrResponseNotFoundTimeout
+	// we just wait until the context deadline
+	//case <-time.After(time.Second * 3):
+	//	return ErrResponseNotFoundTimeout
 	case <-ctx.Done():
 		return ctx.Err()
 	case err := <-errCh:

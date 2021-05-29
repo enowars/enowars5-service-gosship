@@ -83,6 +83,8 @@ func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *h
 		return
 	}
 
+	c.log.Printf("[%s] %s - %s", tm.TaskChainId, tm.Method, tm.TeamName)
+
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	ctx, cancel := context.WithTimeout(request.Context(), time.Duration(tm.Timeout)*time.Millisecond)
 	defer cancel()
