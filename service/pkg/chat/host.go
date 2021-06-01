@@ -176,7 +176,7 @@ func (h *Host) Serve() {
 			h.sendMessageToUser(v, toId)
 		case *CommandMessage:
 			skipSave = true
-			h.handleUserCommand(v)
+			go h.handleUserCommand(v)
 		default:
 			skipSave = true
 			h.Log.Error("unknown message type")
@@ -476,7 +476,7 @@ func NewHost(log *logrus.Logger, db *database.Database, rooms map[string]string)
 	return &Host{
 		Log:      log,
 		users:    make(map[string]*User),
-		msgChan:  make(chan Message, 10),
+		msgChan:  make(chan Message, 50),
 		Database: db,
 		Rooms:    rooms,
 	}
