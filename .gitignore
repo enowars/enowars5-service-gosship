@@ -8,3 +8,4 @@ checker/checker-test
 .envrc
 checker/session-exploit
 checker/private-room-exploit
+checker/load-test
