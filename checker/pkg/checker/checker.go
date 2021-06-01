@@ -83,6 +83,7 @@ func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *h
 		return
 	}
 
+	startTs := time.Now()
 	c.log.Printf("[%s] %s - %s", tm.TaskChainId, tm.Method, tm.TeamName)
 
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -92,7 +93,7 @@ func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *h
 	var res *ResultMessage
 	hi, err := c.checker(ctx, &tm)
 	if err != nil {
-		c.log.Error(err)
+		c.log.Errorf("[%s] %s - %s", tm.TaskChainId, tm.Method, err.Error())
 		if err == context.DeadlineExceeded {
 			res = NewResultMessageOffline("timeout")
 		} else if _, ok := err.(net.Error); ok {
@@ -109,6 +110,7 @@ func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *h
 			res.Flag = hi.Flag
 		}
 	}
+	c.log.Printf("[%s] %s - done [%dms]", tm.TaskChainId, tm.Method, time.Now().Sub(startTs).Milliseconds())
 	if err := json.NewEncoder(writer).Encode(res); err != nil {
 		c.log.Error(err)
 	}
