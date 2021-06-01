@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/kyokomi/emoji/v2"
@@ -346,16 +347,19 @@ func (h *Host) handleUserCommand(msg *CommandMessage) {
 }
 
 func (h *Host) Announcement(msg string) {
-	h.msgChan <- NewAnnouncementMessage(msg)
-
+	h.RouteMessage(NewAnnouncementMessage(msg))
 }
 
 func (h *Host) RoomAnnouncement(room, msg string) {
-	h.msgChan <- NewRoomAnnouncementMessage(room, msg)
+	h.RouteMessage(NewRoomAnnouncementMessage(room, msg))
 }
 
 func (h *Host) RouteMessage(msg Message) {
-	h.msgChan <- msg
+	select {
+	case h.msgChan <- msg:
+	case <-time.After(time.Second * 5):
+		h.Log.Error("RouteMessage timeout")
+	}
 }
 
 func (h *Host) HasRoom(room string) bool {
