@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/acarl005/stripansi"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 )
@@ -189,6 +190,9 @@ func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) (*c
 func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) error {
 	fi, err := h.db.GetEntry(message.TaskChainId)
 	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return checker.ErrFlagNotFound
+		}
 		return err
 	}
 	if fi.Variant != "dm" {
@@ -224,6 +228,9 @@ func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.Tas
 func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *checker.TaskMessage) error {
 	fi, err := h.db.GetEntry(message.TaskChainId)
 	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return checker.ErrFlagNotFound
+		}
 		return err
 	}
 	if fi.Variant != "room" {
@@ -295,6 +302,9 @@ func (h *Handler) putNoiseDirectMessage(ctx context.Context, message *checker.Ta
 func (h *Handler) getNoiseDirectMessage(ctx context.Context, message *checker.TaskMessage) error {
 	fi, err := h.db.GetEntry(message.TaskChainId)
 	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return checker.ErrFlagNotFound
+		}
 		return err
 	}
 	if fi.Variant != "dm" {
