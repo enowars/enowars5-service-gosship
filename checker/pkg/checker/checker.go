@@ -87,7 +87,7 @@ func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *h
 	c.log.Printf("[%s] %s - %s", tm.TaskChainId, tm.Method, tm.TeamName)
 
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-	ctx, cancel := context.WithTimeout(request.Context(), time.Duration(tm.Timeout)*time.Millisecond)
+	ctx, cancel := context.WithTimeout(request.Context(), time.Duration(tm.Timeout-50)*time.Millisecond)
 	defer cancel()
 
 	var res *ResultMessage
@@ -110,7 +110,8 @@ func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *h
 			res.Flag = hi.Flag
 		}
 	}
-	c.log.Printf("[%s] %s - done [%dms]", tm.TaskChainId, tm.Method, time.Now().Sub(startTs).Milliseconds())
+
+	c.log.Printf("[%s] %s - done [%dms]", tm.TaskChainId, tm.Method, time.Since(startTs).Milliseconds())
 	if err := json.NewEncoder(writer).Encode(res); err != nil {
 		c.log.Error(err)
 	}
