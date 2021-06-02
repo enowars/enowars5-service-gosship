@@ -32,7 +32,7 @@ func randomString() string {
 
 const Timeout = 15000
 
-func createTaskMessagePayload(variant uint64) io.Reader {
+func createPutFlagPayload(variant uint64) io.Reader {
 	taskMessage := &checker.TaskMessage{
 		Method:      checker.TaskMessageMethodPutFlag,
 		Address:     "127.0.0.1",
@@ -49,12 +49,39 @@ func createTaskMessagePayload(variant uint64) io.Reader {
 	return bytes.NewReader(rawPayload)
 }
 
+func createPutNoisePayload() io.Reader {
+	taskMessage := &checker.TaskMessage{
+		Method:      checker.TaskMessageMethodPutNoise,
+		Address:     "127.0.0.1",
+		TeamName:    "team",
+		VariantId:   0,
+		Timeout:     Timeout,
+		TaskChainId: randomString(),
+	}
+	rawPayload, err := json.Marshal(taskMessage)
+	if err != nil {
+		panic(err)
+	}
+	return bytes.NewReader(rawPayload)
+}
+
 func sendRequest(group, cnt int, client *http.Client) error {
 	variant := uint64(cnt % 2)
-	logPrefix := fmt.Sprintf("[%02d:%03d:var(%d)]:", group, cnt, variant)
+	var payload io.Reader
+	var pType string
+	if group%2 == 0 {
+		pType = "F"
+		payload = createPutFlagPayload(variant)
+	} else {
+		pType = "N"
+		payload = createPutNoisePayload()
+	}
+	logPrefix := fmt.Sprintf("[%02d:%03d:%s:var(%d)]:", group, cnt, pType, variant)
+
 	start := time.Now()
 	log.Printf("%s sending request...", logPrefix)
-	request, err := http.NewRequest("POST", "http://localhost:2002/", createTaskMessagePayload(variant))
+
+	request, err := http.NewRequest("POST", "http://localhost:2002/", payload)
 	if err != nil {
 		return err
 	}
