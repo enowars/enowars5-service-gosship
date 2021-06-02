@@ -144,10 +144,11 @@ func (h *Host) HandlePublicKey(ctx ssh.Context, key ssh.PublicKey) bool {
 func (h *Host) Serve() {
 	for msg := range h.msgChan {
 		var msgEntry database.MessageEntry
-		skipSave := false
+		saveToDatabase := false
 		h.Log.Debug(msg.String())
 		switch v := msg.(type) {
 		case *PublicMessage:
+			saveToDatabase = true
 			msgEntry.Type = database.MessageType_PUBLIC
 			msgEntry.Body = v.Body
 			msgEntry.Timestamp = timestamppb.New(v.Timestamp)
@@ -166,22 +167,21 @@ func (h *Host) Serve() {
 			msgEntry.Timestamp = timestamppb.New(v.Timestamp)
 			h.sendMessageToAllUsers(v)
 		case *DirectMessage:
+			saveToDatabase = true
 			toId := h.resolveUserNameToID(v.To)
 			msgEntry.Type = database.MessageType_DIRECT
 			msgEntry.Body = v.Body
 			msgEntry.Timestamp = timestamppb.New(v.Timestamp)
 			msgEntry.From = v.From.Id
 			msgEntry.To = toId
-			skipSave = toId == ""
+			saveToDatabase = toId != ""
 			h.sendMessageToUser(v, toId)
 		case *CommandMessage:
-			skipSave = true
 			go h.handleUserCommand(v)
 		default:
-			skipSave = true
 			h.Log.Error("unknown message type")
 		}
-		if skipSave {
+		if !saveToDatabase {
 			continue
 		}
 		if err := h.Database.AddMessageEntry(&msgEntry); err != nil {

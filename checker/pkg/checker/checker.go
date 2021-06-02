@@ -87,7 +87,8 @@ func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *h
 	c.log.Printf("[%s] %s - %s", tm.TaskChainId, tm.Method, tm.TeamName)
 
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-	ctx, cancel := context.WithTimeout(request.Context(), time.Duration(tm.Timeout-500)*time.Millisecond)
+	// reduce timeout by 1000ms so we have enough time to close all connections
+	ctx, cancel := context.WithTimeout(request.Context(), time.Duration(tm.Timeout-1000)*time.Millisecond)
 	defer cancel()
 
 	var res *ResultMessage
