@@ -15,6 +15,11 @@ jobs:
           working-directory: service
           skip-pkg-cache: true
           skip-build-cache: true
+      - uses: golangci/golangci-lint-action@v2
+        with:
+          working-directory: checker
+          skip-pkg-cache: true
+          skip-build-cache: true
   test:
     runs-on: self-hosted
     needs: lint
