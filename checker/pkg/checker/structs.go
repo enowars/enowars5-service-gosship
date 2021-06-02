@@ -18,10 +18,10 @@ var (
 )
 
 type ResultMessage struct {
-	Result     Result `json:"result"`
-	Message    string `json:"message"`
-	AttackInfo string `json:"attackInfo,omitempty"`
-	Flag       string `json:"flag,omitempty"`
+	Result     Result  `json:"result"`
+	Message    *string `json:"message"`
+	AttackInfo string  `json:"attackInfo,omitempty"`
+	Flag       string  `json:"flag,omitempty"`
 }
 
 func NewResultMessageOk() *ResultMessage {
@@ -33,21 +33,21 @@ func NewResultMessageOk() *ResultMessage {
 func NewResultMessageMumble(msg string) *ResultMessage {
 	return &ResultMessage{
 		Result:  ResultMumble,
-		Message: msg,
+		Message: &msg,
 	}
 }
 
 func NewResultMessageOffline(msg string) *ResultMessage {
 	return &ResultMessage{
 		Result:  ResultOffline,
-		Message: msg,
+		Message: &msg,
 	}
 }
 
 func NewResultMessageError(msg string) *ResultMessage {
 	return &ResultMessage{
 		Result:  ResultError,
-		Message: msg,
+		Message: &msg,
 	}
 }
 

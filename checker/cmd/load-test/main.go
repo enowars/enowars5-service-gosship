@@ -97,7 +97,7 @@ func sendRequest(group, cnt int, client *http.Client) error {
 
 	log.Printf("%s done(%dms): %s", logPrefix, time.Since(start).Milliseconds(), checkerRes.Result)
 	if checkerRes.Result != checker.ResultOk {
-		log.Errorf("%s %s", logPrefix, checkerRes.Message)
+		log.Errorf("%s %s", logPrefix, *checkerRes.Message)
 	}
 
 	return nil
