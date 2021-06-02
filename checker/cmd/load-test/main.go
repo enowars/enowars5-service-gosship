@@ -6,13 +6,20 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
-	"io/ioutil"
-	"log"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
+
+var log = logrus.New()
+
+func init() {
+	log.SetFormatter(&logrus.TextFormatter{})
+}
 
 func randomString() string {
 	buf := make([]byte, 32)
@@ -44,7 +51,9 @@ func createTaskMessagePayload(variant uint64) io.Reader {
 
 func sendRequest(group, cnt int, client *http.Client) error {
 	variant := uint64(cnt % 2)
-	log.Printf("[%02d:%04d:var(%d)]: sending request...", group, cnt, variant)
+	logPrefix := fmt.Sprintf("[%02d:%03d:var(%d)]:", group, cnt, variant)
+	start := time.Now()
+	log.Printf("%s sending request...", logPrefix)
 	request, err := http.NewRequest("POST", "http://localhost:2002/", createTaskMessagePayload(variant))
 	if err != nil {
 		return err
@@ -53,11 +62,17 @@ func sendRequest(group, cnt int, client *http.Client) error {
 	if err != nil {
 		return err
 	}
-	resRaw, err := ioutil.ReadAll(res.Body)
-	if err != nil {
+
+	var checkerRes checker.ResultMessage
+	if err := json.NewDecoder(res.Body).Decode(&checkerRes); err != nil {
 		return err
 	}
-	log.Printf("[%02d:%04d:var( %d)]: %s", group, cnt, variant, string(resRaw))
+
+	log.Printf("%s done(%dms): %s", logPrefix, time.Since(start).Milliseconds(), checkerRes.Result)
+	if checkerRes.Result != checker.ResultOk {
+		log.Errorf("%s %s", logPrefix, checkerRes.Message)
+	}
+
 	return nil
 }
 
@@ -73,13 +88,13 @@ func send100Requests(group int, client *http.Client) {
 func run() error {
 	client := &http.Client{
 		Transport: &http.Transport{
-			MaxIdleConns:       10,
 			IdleConnTimeout:    Timeout * time.Millisecond,
 			DisableCompression: true,
 		},
+		Timeout: Timeout * time.Millisecond,
 	}
 	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 50; i++ {
 		wg.Add(1)
 		go func(group int) {
 			send100Requests(group, client)
