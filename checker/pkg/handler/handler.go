@@ -77,8 +77,13 @@ func (h *Handler) sendMessageAndCheckResponse(ctx context.Context, sessIo *clien
 }
 
 func (h *Handler) sendDirectMessage(ctx context.Context, userA *client.User, userB *client.User, addr, msg string) error {
-	_, _, chA, err := client.CreateSSHSession(ctx, userA.Name, addr, userA.PrivateKey)
+	_, sessionIOUserA, chA, err := client.CreateSSHSession(ctx, userA.Name, addr, userA.PrivateKey)
 	if err != nil {
+		return err
+	}
+	err = h.sendMessageAndCheckResponse(ctx, sessionIOUserA, "/info", "Current Room")
+	if err != nil {
+		chA.Execute()
 		return err
 	}
 	chA.Execute()
@@ -102,7 +107,7 @@ func (h *Handler) sendPrivateRoomMessage(ctx context.Context, userA *client.User
 	defer ch.Execute()
 
 	createRoom := fmt.Sprintf("/create %s %s", room, password)
-	err = h.sendMessageAndCheckResponse(ctx, sessionIO, createRoom, room+" was created")
+	err = h.sendMessageAndCheckResponse(ctx, sessionIO, createRoom, "you are now in room "+room)
 	if err != nil {
 		return err
 	}
