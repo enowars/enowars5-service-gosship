@@ -23,6 +23,8 @@ func randomString() string {
 	return hex.EncodeToString(buf)
 }
 
+const Timeout = 15000
+
 func createTaskMessagePayload(variant uint64) io.Reader {
 	taskMessage := &checker.TaskMessage{
 		Method:      checker.TaskMessageMethodPutFlag,
@@ -30,7 +32,7 @@ func createTaskMessagePayload(variant uint64) io.Reader {
 		TeamName:    "team",
 		Flag:        "ENO" + randomString(),
 		VariantId:   variant,
-		Timeout:     15000,
+		Timeout:     Timeout,
 		TaskChainId: randomString(),
 	}
 	rawPayload, err := json.Marshal(taskMessage)
@@ -40,8 +42,9 @@ func createTaskMessagePayload(variant uint64) io.Reader {
 	return bytes.NewReader(rawPayload)
 }
 
-func sendRequest(variant uint64, client *http.Client) error {
-	log.Printf("sending request (%d)...", variant)
+func sendRequest(group, cnt int, client *http.Client) error {
+	variant := uint64(cnt % 2)
+	log.Printf("[%02d:%04d:var(%d)]: sending request...", group, cnt, variant)
 	request, err := http.NewRequest("POST", "http://localhost:2002/", createTaskMessagePayload(variant))
 	if err != nil {
 		return err
@@ -54,13 +57,13 @@ func sendRequest(variant uint64, client *http.Client) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("%s", string(resRaw))
+	log.Printf("[%02d:%04d:var( %d)]: %s", group, cnt, variant, string(resRaw))
 	return nil
 }
 
-func send100Requests(client *http.Client) {
+func send100Requests(group int, client *http.Client) {
 	for i := 0; i < 100; i++ {
-		err := sendRequest(uint64(i%2), client)
+		err := sendRequest(group, i, client)
 		if err != nil {
 			log.Println(err)
 		}
@@ -71,17 +74,17 @@ func run() error {
 	client := &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConns:       10,
-			IdleConnTimeout:    15 * time.Second,
+			IdleConnTimeout:    Timeout * time.Millisecond,
 			DisableCompression: true,
 		},
 	}
 	var wg sync.WaitGroup
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
-		go func() {
-			send100Requests(client)
+		go func(group int) {
+			send100Requests(group, client)
 			wg.Done()
-		}()
+		}(i)
 	}
 	wg.Wait()
 	return nil
