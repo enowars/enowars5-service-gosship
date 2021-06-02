@@ -31,6 +31,7 @@ var ErrVariantIdOutOfRange = errors.New("variantId out of range")
 var ErrVariantNotFound = errors.New("variant not found")
 var ErrInvalidVariant = errors.New("invalid variant database entry")
 var ErrResponseNotFoundTimeout = errors.New("the response was not received after a certain timeout")
+var ErrCheckStringNotFound = errors.New("the provided string was not found")
 
 type Handler struct {
 	log *logrus.Logger
@@ -49,18 +50,22 @@ func (h *Handler) sendMessageAndCheckResponse(ctx context.Context, sessIo *clien
 	if err != nil {
 		return err
 	}
-	errCh := make(chan error)
+	errCh := make(chan error, 1)
 	scanner := bufio.NewScanner(sessIo)
 	go func() {
+		found := false
 		for scanner.Scan() {
 			txt := stripansi.Strip(scanner.Text())
 			if strings.Contains(txt, check) {
+				found = true
 				time.Sleep(time.Millisecond * 100)
 				break
 			}
 		}
 		if err := scanner.Err(); err != nil {
 			errCh <- err
+		} else if !found {
+			errCh <- ErrCheckStringNotFound
 		}
 		close(errCh)
 	}()
