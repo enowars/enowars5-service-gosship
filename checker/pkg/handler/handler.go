@@ -53,21 +53,19 @@ func (h *Handler) sendMessageAndCheckResponse(ctx context.Context, sessIo *clien
 	errCh := make(chan error, 1)
 	scanner := bufio.NewScanner(sessIo)
 	go func() {
-		found := false
+		defer close(errCh)
 		for scanner.Scan() {
 			txt := stripansi.Strip(scanner.Text())
 			if strings.Contains(txt, check) {
-				found = true
 				time.Sleep(time.Millisecond * 100)
-				break
+				return
 			}
 		}
 		if err := scanner.Err(); err != nil {
 			errCh <- err
-		} else if !found {
-			errCh <- ErrCheckStringNotFound
+			return
 		}
-		close(errCh)
+		errCh <- ErrCheckStringNotFound
 	}()
 
 	select {
