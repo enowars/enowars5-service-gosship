@@ -167,7 +167,6 @@ func (h *Host) Serve() {
 			msgEntry.Timestamp = timestamppb.New(v.Timestamp)
 			h.sendMessageToAllUsers(v)
 		case *DirectMessage:
-			saveToDatabase = true
 			toId := h.resolveUserNameToID(v.To)
 			msgEntry.Type = database.MessageType_DIRECT
 			msgEntry.Body = v.Body
