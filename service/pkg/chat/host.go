@@ -25,6 +25,12 @@ type Host struct {
 	Database *database.Database
 	roomsMu  sync.RWMutex
 	Rooms    map[string]string
+
+	// hide user joined/left messages
+	DisableUserAnnouncements bool
+
+	DisableRoomAnnouncements   bool
+	DisableServerAnnouncements bool
 }
 
 func (h *Host) HandleNewSession(session ssh.Session) {
@@ -346,10 +352,16 @@ func (h *Host) handleUserCommand(msg *CommandMessage) {
 }
 
 func (h *Host) Announcement(msg string) {
+	if h.DisableServerAnnouncements {
+		return
+	}
 	h.RouteMessage(NewAnnouncementMessage(msg))
 }
 
 func (h *Host) RoomAnnouncement(room, msg string) {
+	if h.DisableRoomAnnouncements {
+		return
+	}
 	h.RouteMessage(NewRoomAnnouncementMessage(room, msg))
 }
 
@@ -393,10 +405,16 @@ func (h *Host) CheckRoomPassword(room, password string) error {
 }
 
 func (h *Host) JoinRoomAnnouncement(u *User) {
+	if h.DisableUserAnnouncements {
+		return
+	}
 	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s joined the room.", u.RenderName(false)))
 }
 
 func (h *Host) LeftRoomAnnouncement(u *User) {
+	if h.DisableUserAnnouncements {
+		return
+	}
 	h.RoomAnnouncement(u.CurrentRoom, aurora.Sprintf("%s left the room.", u.RenderName(false)))
 }
 
@@ -473,10 +491,13 @@ func (h *Host) ListRoomsForUser(from *User) error {
 
 func NewHost(log *logrus.Logger, db *database.Database, rooms map[string]string) *Host {
 	return &Host{
-		Log:      log,
-		users:    make(map[string]*User),
-		msgChan:  make(chan Message, 50),
-		Database: db,
-		Rooms:    rooms,
+		Log:                        log,
+		users:                      make(map[string]*User),
+		msgChan:                    make(chan Message, 50),
+		Database:                   db,
+		Rooms:                      rooms,
+		DisableUserAnnouncements:   true,
+		DisableRoomAnnouncements:   false,
+		DisableServerAnnouncements: true,
 	}
 }
