@@ -112,10 +112,6 @@ func (u *User) RenderName(self bool) string {
 	return aurora.Cyan(u.Name).String()
 }
 
-func (u *User) RenderListInfo(self bool) string {
-	return aurora.Sprintf("%s %s (%s)", aurora.Yellow("*"), u.RenderName(self), aurora.Blue(u.CurrentRoom))
-}
-
 func (u *User) DBUpdate() error {
 	return u.db.AddOrUpdateUser(u.Id, &database.UserEntry{
 		Fingerprint: u.Fingerprint,

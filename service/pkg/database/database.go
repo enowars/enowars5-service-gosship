@@ -362,6 +362,48 @@ func (db *Database) DumpDirectMessages(username string, emit func(*MessageEntry)
 	return nil
 }
 
+type UserEntries []*UserEntry
+
+func (m UserEntries) Len() int {
+	return len(m)
+}
+
+func (m UserEntries) Less(i, j int) bool {
+	return m[i].Name < m[j].Name
+}
+
+func (m UserEntries) Swap(i, j int) {
+	m[i], m[j] = m[j], m[i]
+}
+
+func (db *Database) DumpUsers() (UserEntries, error) {
+	res := make(UserEntries, 0)
+	err := db.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			if item.UserMeta() != TypeUserEntry {
+				continue
+			}
+			var tmp UserEntry
+			err := it.Item().Value(func(val []byte) error {
+				return proto.Unmarshal(val, &tmp)
+			})
+			if err != nil {
+				return err
+			}
+			res = append(res, &tmp)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Sort(res)
+	return res, err
+}
+
 func (db *Database) Close() {
 	db.log.Println("closing database...")
 	err := db.db.Close()

@@ -433,10 +433,23 @@ func (h *Host) ServerInfo() string {
 }
 
 func (h *Host) ListUsersForUser(from *User) error {
+	dbUsers, err := h.Database.DumpUsers()
+	if err != nil {
+		return err
+	}
 	h.usersMu.RLock()
 	defer h.usersMu.RUnlock()
-	for _, u := range h.users {
-		if err := from.WriteLine(u.RenderListInfo(from.Name == u.Name)); err != nil {
+	for _, u := range dbUsers {
+		name := aurora.Cyan(u.Name)
+		if from.Name == u.Name {
+			name = aurora.Magenta(u.Name)
+		}
+		star := aurora.Yellow("*")
+		if _, online := h.users[u.Name]; online {
+			star = aurora.Green("*")
+		}
+		renderStr := aurora.Sprintf("%s %s (%s)", star, name, aurora.Blue(u.CurrentRoom))
+		if err := from.WriteLine(renderStr); err != nil {
 			return err
 		}
 	}
