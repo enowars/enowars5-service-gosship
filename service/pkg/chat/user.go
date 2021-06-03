@@ -5,7 +5,6 @@ import (
 	"gosship/pkg/database"
 	"gosship/pkg/terminal"
 	"io"
-	"strings"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
@@ -117,6 +116,6 @@ func (u *User) DBUpdate() error {
 }
 
 func (u *User) UpdateCurrentRoom(room string) error {
-	u.CurrentRoom = strings.ToLower(room)
+	u.CurrentRoom = room
 	return u.DBUpdate()
 }

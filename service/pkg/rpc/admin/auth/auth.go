@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"sync"
 )
 
 const randomPoolSize = 512
@@ -28,19 +27,9 @@ func init() {
 	pubKey = pubKeyRaw
 }
 
-func set(wg *sync.WaitGroup, dest *byte, pos *int) {
-	*dest = randomNumberPool[*pos%randomPoolSize]
-	wg.Done()
-}
-
 func GenerateRandomSessionToken() string {
 	token := make([]byte, sessionTokenSize)
-	var wg sync.WaitGroup
-	wg.Add(sessionTokenSize)
-	for i := 0; i < sessionTokenSize; i++ {
-		go set(&wg, &token[i], &i)
-	}
-	wg.Wait()
+	_, _ = rand.Read(token)
 	tokenHash := sha256.New()
 	tokenHash.Write(token)
 	return hex.EncodeToString(tokenHash.Sum(nil))
