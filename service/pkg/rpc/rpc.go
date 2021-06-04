@@ -43,7 +43,7 @@ func (s *GRPCServer) Handle(srv *ssh.Server, conn *gossh.ServerConn, newChan gos
 	}
 	go gossh.DiscardRequests(reqs)
 	s.log.Printf("new rpc channel opened by %s (%s)", ctx.User(), ctx.RemoteAddr())
-	s.listener.PushChannel(ch)
+	s.listener.PushChannel(ch, ctx.SessionID())
 }
 
 func (s *GRPCServer) Serve() {

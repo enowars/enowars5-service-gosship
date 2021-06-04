@@ -9,14 +9,23 @@ import (
 
 type Conn struct {
 	ssh.Channel
+	local, remote net.Addr
+}
+
+func NewConn(channel ssh.Channel, session string) *Conn {
+	return &Conn{
+		Channel: channel,
+		local:   NewLocalAddr(),
+		remote:  NewRemoteAddr(session),
+	}
 }
 
 func (c *Conn) LocalAddr() net.Addr {
-	return generateAddr()
+	return c.local
 }
 
 func (c *Conn) RemoteAddr() net.Addr {
-	return generateAddr()
+	return c.remote
 }
 
 func (c *Conn) SetDeadline(t time.Time) error {

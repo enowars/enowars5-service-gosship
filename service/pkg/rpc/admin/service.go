@@ -9,7 +9,13 @@ import (
 	"sync"
 
 	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc/peer"
 )
+
+type AuthChallenge struct {
+	Challenge []byte
+	Session   string
+}
 
 type Service struct {
 	log              *logrus.Logger
@@ -18,11 +24,13 @@ type Service struct {
 	sessionMu        sync.Mutex
 	sessions         map[string]bool
 	authChallengesMu sync.Mutex
-	authChallenges   map[string][]byte
+	authChallenges   map[string]*AuthChallenge
 	UnimplementedAdminServiceServer
 }
 
+var ErrInvalidRequest = errors.New("invalid request")
 var ErrInvalidAuthChallenge = errors.New("invalid auth challenge")
+var ErrInvalidSSHSession = errors.New("invalid ssh session")
 var ErrInvalidAuthSignature = errors.New("invalid auth signature")
 var ErrInvalidSessionToken = errors.New("invalid session token")
 
@@ -32,32 +40,48 @@ func NewService(log *logrus.Logger, db *database.Database, host *chat.Host) *Ser
 		db:             db,
 		host:           host,
 		sessions:       make(map[string]bool),
-		authChallenges: make(map[string][]byte),
+		authChallenges: make(map[string]*AuthChallenge),
 	}
 }
 
 func (s *Service) GetAuthChallenge(ctx context.Context, request *GetAuthChallenge_Request) (*GetAuthChallenge_Response, error) {
-	id, challenge := auth.CreateAuthChallenge()
+	peer, ok := peer.FromContext(ctx)
+	if !ok {
+		return nil, ErrInvalidRequest
+	}
+	id, challengePayload := auth.CreateAuthChallenge()
+	challenge := &AuthChallenge{
+		Challenge: challengePayload,
+		Session:   peer.Addr.String(),
+	}
 	s.authChallengesMu.Lock()
 	defer s.authChallengesMu.Unlock()
 	s.authChallenges[id] = challenge
 	s.log.Println("[admin-service] new auth challenge")
 	return &GetAuthChallenge_Response{
 		ChallengeId: id,
-		Challenge:   challenge,
+		Challenge:   challengePayload,
 	}, nil
 }
 
 func (s *Service) Auth(ctx context.Context, request *Auth_Request) (*Auth_Response, error) {
+	peer, ok := peer.FromContext(ctx)
+	if !ok {
+		return nil, ErrInvalidRequest
+	}
 	s.authChallengesMu.Lock()
 	defer s.authChallengesMu.Unlock()
 	challenge, hasChallenge := s.authChallenges[request.ChallengeId]
 	if !hasChallenge {
 		return nil, ErrInvalidAuthChallenge
 	}
-	if !auth.VerifySignature(challenge, request.Signature) {
+	if challenge.Session != peer.Addr.String() {
+		return nil, ErrInvalidSSHSession
+	}
+	if !auth.VerifySignature(challenge.Challenge, request.Signature) {
 		return nil, ErrInvalidAuthSignature
 	}
+
 	delete(s.authChallenges, request.ChallengeId)
 	sessionToken := auth.GenerateRandomSessionToken()
 	s.sessionMu.Lock()

@@ -8,11 +8,11 @@ import (
 )
 
 type Listener struct {
-	conChan chan ssh.Channel
+	conChan chan *Conn
 }
 
 func NewListener() *Listener {
-	return &Listener{conChan: make(chan ssh.Channel)}
+	return &Listener{conChan: make(chan *Conn)}
 }
 
 func (l *Listener) Accept() (net.Conn, error) {
@@ -20,7 +20,7 @@ func (l *Listener) Accept() (net.Conn, error) {
 	if !ok {
 		return nil, io.EOF
 	}
-	return &Conn{c}, nil
+	return c, nil
 }
 
 func (l *Listener) Close() error {
@@ -29,9 +29,9 @@ func (l *Listener) Close() error {
 }
 
 func (l *Listener) Addr() net.Addr {
-	return generateAddr()
+	return NewLocalAddr()
 }
 
-func (l *Listener) PushChannel(c ssh.Channel) {
-	l.conChan <- c
+func (l *Listener) PushChannel(c ssh.Channel, session string) {
+	l.conChan <- NewConn(c, session)
 }
