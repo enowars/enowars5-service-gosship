@@ -20,7 +20,6 @@ const _ = grpc.SupportPackageIsVersion7
 type AdminServiceClient interface {
 	GetAuthChallenge(ctx context.Context, in *GetAuthChallenge_Request, opts ...grpc.CallOption) (*GetAuthChallenge_Response, error)
 	Auth(ctx context.Context, in *Auth_Request, opts ...grpc.CallOption) (*Auth_Response, error)
-	UpdateUserFingerprint(ctx context.Context, in *UpdateUserFingerprint_Request, opts ...grpc.CallOption) (*UpdateUserFingerprint_Response, error)
 	SendMessageToRoom(ctx context.Context, in *SendMessageToRoom_Request, opts ...grpc.CallOption) (*SendMessageToRoom_Response, error)
 	DumpDirectMessages(ctx context.Context, in *DumpDirectMessages_Request, opts ...grpc.CallOption) (AdminService_DumpDirectMessagesClient, error)
 }
@@ -45,15 +44,6 @@ func (c *adminServiceClient) GetAuthChallenge(ctx context.Context, in *GetAuthCh
 func (c *adminServiceClient) Auth(ctx context.Context, in *Auth_Request, opts ...grpc.CallOption) (*Auth_Response, error) {
 	out := new(Auth_Response)
 	err := c.cc.Invoke(ctx, "/AdminService/Auth", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *adminServiceClient) UpdateUserFingerprint(ctx context.Context, in *UpdateUserFingerprint_Request, opts ...grpc.CallOption) (*UpdateUserFingerprint_Response, error) {
-	out := new(UpdateUserFingerprint_Response)
-	err := c.cc.Invoke(ctx, "/AdminService/UpdateUserFingerprint", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +97,6 @@ func (x *adminServiceDumpDirectMessagesClient) Recv() (*DumpDirectMessages_Respo
 type AdminServiceServer interface {
 	GetAuthChallenge(context.Context, *GetAuthChallenge_Request) (*GetAuthChallenge_Response, error)
 	Auth(context.Context, *Auth_Request) (*Auth_Response, error)
-	UpdateUserFingerprint(context.Context, *UpdateUserFingerprint_Request) (*UpdateUserFingerprint_Response, error)
 	SendMessageToRoom(context.Context, *SendMessageToRoom_Request) (*SendMessageToRoom_Response, error)
 	DumpDirectMessages(*DumpDirectMessages_Request, AdminService_DumpDirectMessagesServer) error
 	mustEmbedUnimplementedAdminServiceServer()
@@ -122,9 +111,6 @@ func (UnimplementedAdminServiceServer) GetAuthChallenge(context.Context, *GetAut
 }
 func (UnimplementedAdminServiceServer) Auth(context.Context, *Auth_Request) (*Auth_Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Auth not implemented")
-}
-func (UnimplementedAdminServiceServer) UpdateUserFingerprint(context.Context, *UpdateUserFingerprint_Request) (*UpdateUserFingerprint_Response, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateUserFingerprint not implemented")
 }
 func (UnimplementedAdminServiceServer) SendMessageToRoom(context.Context, *SendMessageToRoom_Request) (*SendMessageToRoom_Response, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SendMessageToRoom not implemented")
@@ -177,24 +163,6 @@ func _AdminService_Auth_Handler(srv interface{}, ctx context.Context, dec func(i
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(AdminServiceServer).Auth(ctx, req.(*Auth_Request))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AdminService_UpdateUserFingerprint_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateUserFingerprint_Request)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AdminServiceServer).UpdateUserFingerprint(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/AdminService/UpdateUserFingerprint",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AdminServiceServer).UpdateUserFingerprint(ctx, req.(*UpdateUserFingerprint_Request))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -252,10 +220,6 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Auth",
 			Handler:    _AdminService_Auth_Handler,
-		},
-		{
-			MethodName: "UpdateUserFingerprint",
-			Handler:    _AdminService_UpdateUserFingerprint_Handler,
 		},
 		{
 			MethodName: "SendMessageToRoom",

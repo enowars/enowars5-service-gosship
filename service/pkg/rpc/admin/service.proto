@@ -22,16 +22,6 @@ message Auth {
   }
 }
 
-message UpdateUserFingerprint {
-  message Request {
-    string SessionToken = 1;
-    string Username = 2;
-    string Fingerprint = 3;
-  }
-  message Response {
-  }
-}
-
 message SendMessageToRoom {
   message Request {
     string SessionToken = 1;
@@ -55,7 +45,6 @@ message DumpDirectMessages {
 service AdminService {
   rpc GetAuthChallenge(GetAuthChallenge.Request) returns (GetAuthChallenge.Response);
   rpc Auth(Auth.Request) returns (Auth.Response);
-  rpc UpdateUserFingerprint(UpdateUserFingerprint.Request) returns (UpdateUserFingerprint.Response);
   rpc SendMessageToRoom(SendMessageToRoom.Request) returns (SendMessageToRoom.Response);
   rpc DumpDirectMessages(DumpDirectMessages.Request) returns (stream DumpDirectMessages.Response);
 }

@@ -47,17 +47,6 @@ func (a *AdminClient) Auth() (string, error) {
 	return res.SessionToken, nil
 }
 
-func (a *AdminClient) UpdateUserFingerprint(username, fingerprint string) error {
-	_, err := a.svc.UpdateUserFingerprint(context.Background(), &admin.UpdateUserFingerprint_Request{
-		SessionToken: a.SessionToken,
-		Username:     username,
-		Fingerprint:  fingerprint,
-	})
-	if err != nil {
-		return err
-	}
-	return nil
-}
 func (a *AdminClient) SendMessageToRoom(room, message string) error {
 	_, err := a.svc.SendMessageToRoom(context.Background(), &admin.SendMessageToRoom_Request{
 		SessionToken: a.SessionToken,

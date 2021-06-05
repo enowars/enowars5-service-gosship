@@ -102,18 +102,6 @@ func (s *Service) checkSession(token string) error {
 	return nil
 }
 
-func (s *Service) UpdateUserFingerprint(ctx context.Context, request *UpdateUserFingerprint_Request) (*UpdateUserFingerprint_Response, error) {
-	if err := s.checkSession(request.SessionToken); err != nil {
-		return nil, err
-	}
-	s.log.Printf("[admin-service] fingerprint update for %s", request.Username)
-	err := s.db.UpdateUserFingerprint(request.Username, request.Fingerprint)
-	if err != nil {
-		return nil, err
-	}
-	return &UpdateUserFingerprint_Response{}, nil
-}
-
 func (s *Service) SendMessageToRoom(ctx context.Context, request *SendMessageToRoom_Request) (*SendMessageToRoom_Response, error) {
 	if err := s.checkSession(request.SessionToken); err != nil {
 		return nil, err
