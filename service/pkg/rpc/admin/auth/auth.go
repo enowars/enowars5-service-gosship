@@ -20,6 +20,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+	// please do not change the public key from the checker, otherwise you service will be mumble
 	pubKeyRaw, err := hex.DecodeString("80de0e58c0842f83cf95f9772a5a13c167dd4c0e3fd02913076d16df828fbbb2")
 	if err != nil {
 		panic(err)
