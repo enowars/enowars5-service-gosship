@@ -52,8 +52,12 @@ func run(log *logrus.Logger) error {
 		Addr:             ":2222",
 		Handler:          h.HandleNewSession,
 		HostSigners:      []ssh.Signer{signer},
-		Version:          "gosship",
+		Version:          "goSSHip",
 		PublicKeyHandler: h.HandlePublicKey,
+		KeyboardInteractiveHandler: func(ctx ssh.Context, challenger gossh.KeyboardInteractiveChallenge) bool {
+			_, _ = challenger("", "You must have a SSH key pair configured to use this service!", []string{}, []bool{})
+			return false
+		},
 		ChannelHandlers: map[string]ssh.ChannelHandler{
 			"session": ssh.DefaultSessionHandler,
 			"rpc":     rpcServer.Handle,
