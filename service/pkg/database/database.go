@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/dgraph-io/badger/v3"
@@ -32,9 +33,25 @@ var (
 	roomConfigEntryKey = "room-config"
 )
 
+var entryToPrefix = map[byte]string{
+	TypeConfigEntry:     "config",
+	TypeUserEntry:       "user",
+	TypeMessageEntry:    "message",
+	TypeRoomConfigEntry: "config",
+}
+
+func getKeyWithPrefix(meta byte, keyParts ...string) []byte {
+	return []byte(fmt.Sprintf("%s/%s", entryToPrefix[meta], strings.Join(keyParts, "/")))
+}
+
+func stripKeyPrefix(meta byte, key []byte) string {
+	return strings.Replace(string(key), entryToPrefix[meta]+"/", "", 1)
+}
+
 type Database struct {
-	log *logrus.Logger
-	db  *badger.DB
+	log      *logrus.Logger
+	db       *badger.DB
+	gcTicker *time.Ticker
 }
 
 func NewDatabase(log *logrus.Logger) (*Database, error) {
@@ -55,7 +72,14 @@ func (db *Database) addNewEntry(meta byte, id string, msg proto.Message) error {
 	if err != nil {
 		return err
 	}
-	entry := badger.NewEntry([]byte(id), val).WithMeta(meta)
+
+	entry := badger.NewEntry(getKeyWithPrefix(meta, id), val).WithMeta(meta)
+
+	// messages expire after 1 hour
+	if meta == TypeMessageEntry {
+		entry.WithTTL(3 * time.Hour)
+	}
+
 	return db.db.Update(func(txn *badger.Txn) error {
 		return txn.SetEntry(entry)
 	})
@@ -65,7 +89,8 @@ func (db *Database) GetConfig() (*ConfigEntry, error) {
 	db.log.Println("getting config...")
 	var ce ConfigEntry
 	err := db.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(configEntryKey))
+
+		item, err := txn.Get(getKeyWithPrefix(TypeConfigEntry, configEntryKey))
 		if err != nil {
 			return err
 		}
@@ -91,7 +116,7 @@ func (db *Database) GetRoomConfig() (*RoomConfigEntry, error) {
 	db.log.Println("getting room config...")
 	var rce RoomConfigEntry
 	err := db.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(roomConfigEntryKey))
+		item, err := txn.Get(getKeyWithPrefix(TypeRoomConfigEntry, roomConfigEntryKey))
 		if err != nil {
 			return err
 		}
@@ -128,7 +153,8 @@ func (db *Database) FindUserByPredicate(predicate func(entry *UserEntry) bool) (
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
+		prefix := getKeyWithPrefix(TypeUserEntry)
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			if item.UserMeta() != TypeUserEntry {
 				continue
@@ -142,7 +168,7 @@ func (db *Database) FindUserByPredicate(predicate func(entry *UserEntry) bool) (
 			}
 			if predicate(&tmp) {
 				ue = &tmp
-				usedId = string(item.Key())
+				usedId = stripKeyPrefix(TypeUserEntry, item.Key())
 				return nil
 			}
 		}
@@ -184,7 +210,7 @@ func (db *Database) RenameUser(id, newUsername string) error {
 		return fmt.Errorf("username already taken")
 	}
 	return db.db.Update(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(id))
+		item, err := txn.Get(getKeyWithPrefix(TypeUserEntry, id))
 		if err != nil {
 			return err
 		}
@@ -203,7 +229,7 @@ func (db *Database) RenameUser(id, newUsername string) error {
 		if err != nil {
 			return err
 		}
-		return txn.SetEntry(badger.NewEntry([]byte(id), updatedVal).WithMeta(TypeUserEntry))
+		return txn.SetEntry(badger.NewEntry(getKeyWithPrefix(TypeUserEntry, id), updatedVal).WithMeta(TypeUserEntry))
 	})
 }
 
@@ -227,7 +253,8 @@ func (db *Database) GetRecentMessagesForUserAndRoom(uid, room string) (MessageEn
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
+		prefix := getKeyWithPrefix(TypeMessageEntry)
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			if item.UserMeta() != TypeMessageEntry {
 				continue
@@ -265,7 +292,8 @@ func (db *Database) GetRecentDirectMessagesForUser(selfId, uid string) (MessageE
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
+		prefix := getKeyWithPrefix(TypeMessageEntry)
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			if item.UserMeta() != TypeMessageEntry {
 				continue
@@ -299,7 +327,7 @@ func (db *Database) GetRecentDirectMessagesForUser(selfId, uid string) (MessageE
 func (db *Database) GetUserById(id string) (*UserEntry, error) {
 	var ue UserEntry
 	err := db.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(id))
+		item, err := txn.Get(getKeyWithPrefix(TypeUserEntry, id))
 		if err != nil {
 			return err
 		}
@@ -331,7 +359,8 @@ func (db *Database) DumpDirectMessages(username string, emit func(*MessageEntry)
 	err = db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
+		prefix := getKeyWithPrefix(TypeMessageEntry)
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			if item.UserMeta() != TypeMessageEntry {
 				continue
@@ -381,7 +410,8 @@ func (db *Database) DumpUsers() (UserEntries, error) {
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
+		prefix := getKeyWithPrefix(TypeUserEntry)
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			if item.UserMeta() != TypeUserEntry {
 				continue
@@ -404,8 +434,26 @@ func (db *Database) DumpUsers() (UserEntries, error) {
 	return res, err
 }
 
+func (db *Database) RunGarbageCollection() {
+	d := 5 * time.Minute
+	db.log.Printf("starting database garbage collection every %s...", d)
+	db.gcTicker = time.NewTicker(d)
+	for range db.gcTicker.C {
+	again:
+		db.log.Debug("running database garbage collection...")
+		err := db.db.RunValueLogGC(0.7)
+		if err == nil {
+			goto again
+		}
+	}
+}
+
 func (db *Database) Close() {
 	db.log.Println("closing database...")
+	if db.gcTicker != nil {
+		db.log.Println("stopping database garbage collection...")
+		db.gcTicker.Stop()
+	}
 	err := db.db.Close()
 	if err != nil {
 		db.log.Error(err)

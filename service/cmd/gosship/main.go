@@ -26,6 +26,8 @@ func run(log *logrus.Logger) error {
 	}
 	defer db.Close()
 
+	go db.RunGarbageCollection()
+
 	log.Println("loading/generating server key...")
 	signer, err := utils.GetHostSigner(db)
 	if err != nil {
