@@ -20,7 +20,7 @@ type User struct {
 }
 
 func GenerateRoomAndPassword() (string, string) {
-	room := fmt.Sprintf("%s-%s-%s", randomdata.Adjective(), randomdata.Noun(), randomdata.BoundedDigits(6, 0, 999999))
+	room := fmt.Sprintf("%s-%s-%s-%s", randomdata.Adjective(), randomdata.Adjective(), randomdata.Noun(), randomdata.BoundedDigits(6, 0, 999999))
 	pwBuf := make([]byte, 16)
 	_, _ = rand.Reader.Read(pwBuf)
 	return strings.ToLower(room), hex.EncodeToString(pwBuf)
@@ -31,7 +31,7 @@ func GenerateNewUser() (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	name := fmt.Sprintf("%s-%s-%s", randomdata.Adjective(), randomdata.FirstName(randomdata.RandomGender), randomdata.BoundedDigits(6, 0, 999999))
+	name := fmt.Sprintf("%s-%s-%s-%s", randomdata.Adjective(), randomdata.Adjective(), randomdata.FirstName(randomdata.RandomGender), randomdata.BoundedDigits(6, 0, 999999))
 	return &User{
 		Name:       strings.ToLower(name),
 		PrivateKey: privateKey,
