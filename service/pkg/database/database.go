@@ -75,9 +75,13 @@ func (db *Database) addNewEntry(meta byte, id string, msg proto.Message) error {
 
 	entry := badger.NewEntry(getKeyWithPrefix(meta, id), val).WithMeta(meta)
 
-	// messages expire after 1 hour
-	if meta == TypeMessageEntry {
+	switch meta {
+	case TypeMessageEntry:
+		// messages expire after 3 hours
 		entry.WithTTL(3 * time.Hour)
+	case TypeUserEntry:
+		// users expire after 6 hours after the last login
+		entry.WithTTL(6 * time.Hour)
 	}
 
 	return db.db.Update(func(txn *badger.Txn) error {
