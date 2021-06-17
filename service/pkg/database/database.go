@@ -443,7 +443,6 @@ func (db *Database) runGC() {
 	for {
 		err := db.db.RunValueLogGC(0.7)
 		if err != nil {
-			db.log.Error(err)
 			break
 		}
 	}
