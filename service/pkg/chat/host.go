@@ -18,13 +18,14 @@ import (
 const title = "              _____ _____ _    _ _       \n             / ____/ ____| |  | (_)      \n   __ _  ___| (___| (___ | |__| |_ _ __  \n  / _` |/ _ \\\\___ \\\\___ \\|  __  | | '_ \\ \n | (_| | (_) |___) |___) | |  | | | |_) |\n  \\__, |\\___/_____/_____/|_|  |_|_| .__/ \n   __/ |                          | |    \n  |___/                           |_|    "
 
 type Host struct {
-	Log      *logrus.Logger
-	usersMu  sync.RWMutex
-	users    map[string]*User
-	msgChan  chan Message
-	Database *database.Database
-	roomsMu  sync.RWMutex
-	Rooms    map[string]string
+	Log               *logrus.Logger
+	usersMu           sync.RWMutex
+	users             map[string]*User
+	msgChan           chan Message
+	Database          *database.Database
+	roomsMu           sync.RWMutex
+	Rooms             map[string]*database.RoomEntry
+	cleanupTickerStop chan struct{}
 
 	// hide user joined/left messages
 	DisableUserAnnouncements bool
@@ -387,8 +388,11 @@ func (h *Host) CreateRoom(room, password string) error {
 	if ok {
 		return fmt.Errorf("room %s already exist", room)
 	}
-	h.Rooms[room] = password
-	return h.Database.SetRoomConfig(&database.RoomConfigEntry{Rooms: h.Rooms})
+	h.Rooms[room] = &database.RoomEntry{
+		Password:  password,
+		Timestamp: timestamppb.New(time.Now()),
+	}
+	return h.Database.UpdateRooms(h.Rooms)
 }
 
 func (h *Host) CheckRoomPassword(room, password string) error {
@@ -398,10 +402,45 @@ func (h *Host) CheckRoomPassword(room, password string) error {
 	if !ok {
 		return fmt.Errorf("room %s does not exist", room)
 	}
-	if h.Rooms[room] != password {
+	if h.Rooms[room].Password != password {
 		return fmt.Errorf("invalid password")
 	}
 	return nil
+}
+
+func (h *Host) resetRoomForConnectedUsers(room string) {
+	h.usersMu.RLock()
+	defer h.usersMu.RUnlock()
+	for _, u := range h.users {
+		if u.CurrentRoom != room {
+			continue
+		}
+
+		if err := u.UpdateCurrentRoom("default"); err != nil {
+			h.Log.Error(err)
+			continue
+		}
+		_ = u.WriteLine(aurora.Sprintf("you are now in room %s.", aurora.Blue("default")))
+	}
+}
+
+func (h *Host) cleanupRooms() error {
+	h.roomsMu.Lock()
+	defer h.roomsMu.Unlock()
+	pastMarker := time.Now().Add(-3 * time.Hour)
+	update := false
+	for roomName, roomEntry := range h.Rooms {
+		if roomEntry.Timestamp != nil && roomEntry.Timestamp.AsTime().Before(pastMarker) {
+			h.Log.Infof("removing room %s", roomName)
+			h.resetRoomForConnectedUsers(roomName)
+			delete(h.Rooms, roomName)
+			update = true
+		}
+	}
+	if !update {
+		return nil
+	}
+	return h.Database.UpdateRooms(h.Rooms)
 }
 
 func (h *Host) JoinRoomAnnouncement(u *User) {
@@ -485,9 +524,9 @@ func (h *Host) ShowRecentMessages(u *User, skipAnnouncements bool) error {
 func (h *Host) ListRoomsForUser(from *User) error {
 	h.roomsMu.RLock()
 	defer h.roomsMu.RUnlock()
-	for room, password := range h.Rooms {
+	for room, roomEntry := range h.Rooms {
 		roomEmoji := ":speaking_head:"
-		if password != "" {
+		if roomEntry.Password != "" {
 			roomEmoji = ":closed_lock_with_key:"
 		}
 		bulletPoint := aurora.Yellow("*")
@@ -502,7 +541,29 @@ func (h *Host) ListRoomsForUser(from *User) error {
 	return nil
 }
 
-func NewHost(log *logrus.Logger, db *database.Database, rooms map[string]string) *Host {
+func (h *Host) Cleanup() {
+	ticker := time.NewTicker(3 * time.Minute)
+	defer ticker.Stop()
+	h.Log.Info("cleanup started...")
+	for {
+		select {
+		case <-ticker.C:
+			err := h.cleanupRooms()
+			if err != nil {
+				h.Log.Error(err)
+			}
+		case <-h.cleanupTickerStop:
+			h.Log.Info("cleanup stopped")
+			return
+		}
+	}
+}
+
+func (h *Host) StopCleanup() {
+	h.cleanupTickerStop <- struct{}{}
+}
+
+func NewHost(log *logrus.Logger, db *database.Database, rooms map[string]*database.RoomEntry) *Host {
 	return &Host{
 		Log:                        log,
 		users:                      make(map[string]*User),
@@ -512,5 +573,6 @@ func NewHost(log *logrus.Logger, db *database.Database, rooms map[string]string)
 		DisableUserAnnouncements:   true,
 		DisableRoomAnnouncements:   false,
 		DisableServerAnnouncements: true,
+		cleanupTickerStop:          make(chan struct{}, 1),
 	}
 }

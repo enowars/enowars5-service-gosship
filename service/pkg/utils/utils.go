@@ -38,8 +38,12 @@ func GetRoomConfig(db *database.Database) (*database.RoomConfigEntry, error) {
 		return config, nil
 	}
 
-	config = &database.RoomConfigEntry{Rooms: map[string]string{
-		"default": "",
+	defaultRoom := &database.RoomEntry{
+		Password:  "",
+		Timestamp: nil,
+	}
+	config = &database.RoomConfigEntry{Rooms: map[string]*database.RoomEntry{
+		"default": defaultRoom,
 	}}
 	err = db.SetRoomConfig(config)
 	if err != nil {

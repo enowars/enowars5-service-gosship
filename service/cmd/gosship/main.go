@@ -41,9 +41,9 @@ func run(log *logrus.Logger) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("rooms: %v", roomConfig.Rooms)
 	h := chat.NewHost(log, db, roomConfig.Rooms)
 	go h.Serve()
+	go h.Cleanup()
 
 	log.Println("starting grpc server...")
 	rpcServer := rpc.NewGRPCServer(log, db, h)
@@ -78,6 +78,7 @@ func run(log *logrus.Logger) error {
 	stop()
 
 	log.Println("stopping server...")
+	h.StopCleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
