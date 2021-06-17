@@ -7,8 +7,13 @@ message ConfigEntry {
   bytes PrivateKey = 1;
 }
 
+message RoomEntry {
+  string Password = 1;
+  google.protobuf.Timestamp Timestamp = 2;
+}
+
 message RoomConfigEntry {
-  map<string, string> Rooms = 1;
+  map<string, RoomEntry> Rooms = 1;
 }
 
 message UserEntry {

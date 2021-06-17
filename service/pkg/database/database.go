@@ -49,9 +49,9 @@ func stripKeyPrefix(meta byte, key []byte) string {
 }
 
 type Database struct {
-	log      *logrus.Logger
-	db       *badger.DB
-	gcTicker *time.Ticker
+	log          *logrus.Logger
+	db           *badger.DB
+	gcTickerStop chan struct{}
 }
 
 func NewDatabase(log *logrus.Logger) (*Database, error) {
@@ -62,8 +62,9 @@ func NewDatabase(log *logrus.Logger) (*Database, error) {
 	}
 
 	return &Database{
-		log: log,
-		db:  db,
+		log:          log,
+		db:           db,
+		gcTickerStop: make(chan struct{}, 1),
 	}, nil
 }
 
@@ -77,11 +78,11 @@ func (db *Database) addNewEntry(meta byte, id string, msg proto.Message) error {
 
 	switch meta {
 	case TypeMessageEntry:
-		// messages expire after 3 hours
-		entry.WithTTL(3 * time.Hour)
+		// messages expire after 30 minutes
+		entry.WithTTL(30 * time.Minute)
 	case TypeUserEntry:
-		// users expire after 6 hours after the last login
-		entry.WithTTL(6 * time.Hour)
+		// users expire after 2 hours after the last login
+		entry.WithTTL(2 * time.Hour)
 	}
 
 	return db.db.Update(func(txn *badger.Txn) error {
@@ -142,7 +143,7 @@ func (db *Database) SetRoomConfig(rce *RoomConfigEntry) error {
 	return db.addNewEntry(TypeRoomConfigEntry, roomConfigEntryKey, rce)
 }
 
-func (db *Database) UpdateRooms(rooms map[string]string) error {
+func (db *Database) UpdateRooms(rooms map[string]*RoomEntry) error {
 	return db.SetRoomConfig(&RoomConfigEntry{Rooms: rooms})
 }
 
@@ -253,7 +254,7 @@ func (m MessageEntries) Swap(i, j int) {
 
 func (db *Database) GetRecentMessagesForUserAndRoom(uid, room string) (MessageEntries, error) {
 	res := make(MessageEntries, 0)
-	pastMarker := time.Now().Add(-12 * time.Minute)
+	pastMarker := time.Now().Add(-15 * time.Minute)
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
@@ -292,7 +293,7 @@ func (db *Database) GetRecentMessagesForUserAndRoom(uid, room string) (MessageEn
 
 func (db *Database) GetRecentDirectMessagesForUser(selfId, uid string) (MessageEntries, error) {
 	res := make(MessageEntries, 0)
-	pastMarker := time.Now().Add(-24 * time.Hour)
+	pastMarker := time.Now().Add(-15 * time.Minute)
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
@@ -438,26 +439,36 @@ func (db *Database) DumpUsers() (UserEntries, error) {
 	return res, err
 }
 
+func (db *Database) runGC() {
+	for {
+		err := db.db.RunValueLogGC(0.7)
+		if err != nil {
+			db.log.Error(err)
+			break
+		}
+	}
+}
+
 func (db *Database) RunGarbageCollection() {
 	d := 5 * time.Minute
 	db.log.Printf("starting database garbage collection every %s...", d)
-	db.gcTicker = time.NewTicker(d)
-	for range db.gcTicker.C {
-	again:
-		db.log.Debug("running database garbage collection...")
-		err := db.db.RunValueLogGC(0.7)
-		if err == nil {
-			goto again
+	ticker := time.NewTicker(d)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			db.log.Debug("running database garbage collection...")
+			db.runGC()
+		case <-db.gcTickerStop:
+			db.log.Println("stopped database garbage collection")
+			return
 		}
 	}
 }
 
 func (db *Database) Close() {
+	db.gcTickerStop <- struct{}{}
 	db.log.Println("closing database...")
-	if db.gcTicker != nil {
-		db.log.Println("stopping database garbage collection...")
-		db.gcTicker.Stop()
-	}
 	err := db.db.Close()
 	if err != nil {
 		db.log.Error(err)

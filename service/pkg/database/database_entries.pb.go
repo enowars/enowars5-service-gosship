@@ -123,18 +123,73 @@ func (x *ConfigEntry) GetPrivateKey() []byte {
 	return nil
 }
 
+type RoomEntry struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Password  string                 `protobuf:"bytes,1,opt,name=Password,proto3" json:"Password,omitempty"`
+	Timestamp *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=Timestamp,proto3" json:"Timestamp,omitempty"`
+}
+
+func (x *RoomEntry) Reset() {
+	*x = RoomEntry{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_pkg_database_database_entries_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *RoomEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RoomEntry) ProtoMessage() {}
+
+func (x *RoomEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_pkg_database_database_entries_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RoomEntry.ProtoReflect.Descriptor instead.
+func (*RoomEntry) Descriptor() ([]byte, []int) {
+	return file_pkg_database_database_entries_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *RoomEntry) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
+}
+
+func (x *RoomEntry) GetTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
 type RoomConfigEntry struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Rooms map[string]string `protobuf:"bytes,1,rep,name=Rooms,proto3" json:"Rooms,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Rooms map[string]*RoomEntry `protobuf:"bytes,1,rep,name=Rooms,proto3" json:"Rooms,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (x *RoomConfigEntry) Reset() {
 	*x = RoomConfigEntry{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_database_database_entries_proto_msgTypes[1]
+		mi := &file_pkg_database_database_entries_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -147,7 +202,7 @@ func (x *RoomConfigEntry) String() string {
 func (*RoomConfigEntry) ProtoMessage() {}
 
 func (x *RoomConfigEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_database_database_entries_proto_msgTypes[1]
+	mi := &file_pkg_database_database_entries_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -160,10 +215,10 @@ func (x *RoomConfigEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RoomConfigEntry.ProtoReflect.Descriptor instead.
 func (*RoomConfigEntry) Descriptor() ([]byte, []int) {
-	return file_pkg_database_database_entries_proto_rawDescGZIP(), []int{1}
+	return file_pkg_database_database_entries_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *RoomConfigEntry) GetRooms() map[string]string {
+func (x *RoomConfigEntry) GetRooms() map[string]*RoomEntry {
 	if x != nil {
 		return x.Rooms
 	}
@@ -183,7 +238,7 @@ type UserEntry struct {
 func (x *UserEntry) Reset() {
 	*x = UserEntry{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_database_database_entries_proto_msgTypes[2]
+		mi := &file_pkg_database_database_entries_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -196,7 +251,7 @@ func (x *UserEntry) String() string {
 func (*UserEntry) ProtoMessage() {}
 
 func (x *UserEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_database_database_entries_proto_msgTypes[2]
+	mi := &file_pkg_database_database_entries_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -209,7 +264,7 @@ func (x *UserEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UserEntry.ProtoReflect.Descriptor instead.
 func (*UserEntry) Descriptor() ([]byte, []int) {
-	return file_pkg_database_database_entries_proto_rawDescGZIP(), []int{2}
+	return file_pkg_database_database_entries_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *UserEntry) GetFingerprint() string {
@@ -249,7 +304,7 @@ type MessageEntry struct {
 func (x *MessageEntry) Reset() {
 	*x = MessageEntry{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_pkg_database_database_entries_proto_msgTypes[3]
+		mi := &file_pkg_database_database_entries_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -262,7 +317,7 @@ func (x *MessageEntry) String() string {
 func (*MessageEntry) ProtoMessage() {}
 
 func (x *MessageEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_pkg_database_database_entries_proto_msgTypes[3]
+	mi := &file_pkg_database_database_entries_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -275,7 +330,7 @@ func (x *MessageEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MessageEntry.ProtoReflect.Descriptor instead.
 func (*MessageEntry) Descriptor() ([]byte, []int) {
-	return file_pkg_database_database_entries_proto_rawDescGZIP(), []int{3}
+	return file_pkg_database_database_entries_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *MessageEntry) GetType() MessageType {
@@ -330,14 +385,21 @@ var file_pkg_database_database_entries_proto_rawDesc = []byte{
 	0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x2d, 0x0a, 0x0b, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67,
 	0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x1e, 0x0a, 0x0a, 0x50, 0x72, 0x69, 0x76, 0x61, 0x74, 0x65,
 	0x4b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x0a, 0x50, 0x72, 0x69, 0x76, 0x61,
-	0x74, 0x65, 0x4b, 0x65, 0x79, 0x22, 0x7e, 0x0a, 0x0f, 0x52, 0x6f, 0x6f, 0x6d, 0x43, 0x6f, 0x6e,
-	0x66, 0x69, 0x67, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x31, 0x0a, 0x05, 0x52, 0x6f, 0x6f, 0x6d,
-	0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1b, 0x2e, 0x52, 0x6f, 0x6f, 0x6d, 0x43, 0x6f,
-	0x6e, 0x66, 0x69, 0x67, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x2e, 0x52, 0x6f, 0x6f, 0x6d, 0x73, 0x45,
-	0x6e, 0x74, 0x72, 0x79, 0x52, 0x05, 0x52, 0x6f, 0x6f, 0x6d, 0x73, 0x1a, 0x38, 0x0a, 0x0a, 0x52,
-	0x6f, 0x6f, 0x6d, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79,
-	0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76,
-	0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75,
+	0x74, 0x65, 0x4b, 0x65, 0x79, 0x22, 0x61, 0x0a, 0x09, 0x52, 0x6f, 0x6f, 0x6d, 0x45, 0x6e, 0x74,
+	0x72, 0x79, 0x12, 0x1a, 0x0a, 0x08, 0x50, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x18, 0x01,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x50, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x12, 0x38,
+	0x0a, 0x09, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x62, 0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x52, 0x09, 0x54,
+	0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x22, 0x8a, 0x01, 0x0a, 0x0f, 0x52, 0x6f, 0x6f,
+	0x6d, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x31, 0x0a, 0x05,
+	0x52, 0x6f, 0x6f, 0x6d, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1b, 0x2e, 0x52, 0x6f,
+	0x6f, 0x6d, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x2e, 0x52, 0x6f,
+	0x6f, 0x6d, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x05, 0x52, 0x6f, 0x6f, 0x6d, 0x73, 0x1a,
+	0x44, 0x0a, 0x0a, 0x52, 0x6f, 0x6f, 0x6d, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a,
+	0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12,
+	0x20, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0a,
+	0x2e, 0x52, 0x6f, 0x6f, 0x6d, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75,
 	0x65, 0x3a, 0x02, 0x38, 0x01, 0x22, 0x63, 0x0a, 0x09, 0x55, 0x73, 0x65, 0x72, 0x45, 0x6e, 0x74,
 	0x72, 0x79, 0x12, 0x20, 0x0a, 0x0b, 0x46, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e,
 	0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0b, 0x46, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70,
@@ -379,25 +441,28 @@ func file_pkg_database_database_entries_proto_rawDescGZIP() []byte {
 }
 
 var file_pkg_database_database_entries_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_pkg_database_database_entries_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_pkg_database_database_entries_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_pkg_database_database_entries_proto_goTypes = []interface{}{
 	(MessageType)(0),              // 0: MessageType
 	(*ConfigEntry)(nil),           // 1: ConfigEntry
-	(*RoomConfigEntry)(nil),       // 2: RoomConfigEntry
-	(*UserEntry)(nil),             // 3: UserEntry
-	(*MessageEntry)(nil),          // 4: MessageEntry
-	nil,                           // 5: RoomConfigEntry.RoomsEntry
-	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
+	(*RoomEntry)(nil),             // 2: RoomEntry
+	(*RoomConfigEntry)(nil),       // 3: RoomConfigEntry
+	(*UserEntry)(nil),             // 4: UserEntry
+	(*MessageEntry)(nil),          // 5: MessageEntry
+	nil,                           // 6: RoomConfigEntry.RoomsEntry
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
 }
 var file_pkg_database_database_entries_proto_depIdxs = []int32{
-	5, // 0: RoomConfigEntry.Rooms:type_name -> RoomConfigEntry.RoomsEntry
-	0, // 1: MessageEntry.Type:type_name -> MessageType
-	6, // 2: MessageEntry.Timestamp:type_name -> google.protobuf.Timestamp
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	7, // 0: RoomEntry.Timestamp:type_name -> google.protobuf.Timestamp
+	6, // 1: RoomConfigEntry.Rooms:type_name -> RoomConfigEntry.RoomsEntry
+	0, // 2: MessageEntry.Type:type_name -> MessageType
+	7, // 3: MessageEntry.Timestamp:type_name -> google.protobuf.Timestamp
+	2, // 4: RoomConfigEntry.RoomsEntry.value:type_name -> RoomEntry
+	5, // [5:5] is the sub-list for method output_type
+	5, // [5:5] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_pkg_database_database_entries_proto_init() }
@@ -419,7 +484,7 @@ func file_pkg_database_database_entries_proto_init() {
 			}
 		}
 		file_pkg_database_database_entries_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RoomConfigEntry); i {
+			switch v := v.(*RoomEntry); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -431,7 +496,7 @@ func file_pkg_database_database_entries_proto_init() {
 			}
 		}
 		file_pkg_database_database_entries_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UserEntry); i {
+			switch v := v.(*RoomConfigEntry); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -443,6 +508,18 @@ func file_pkg_database_database_entries_proto_init() {
 			}
 		}
 		file_pkg_database_database_entries_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*UserEntry); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_pkg_database_database_entries_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*MessageEntry); i {
 			case 0:
 				return &v.state
@@ -461,7 +538,7 @@ func file_pkg_database_database_entries_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_pkg_database_database_entries_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   5,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
