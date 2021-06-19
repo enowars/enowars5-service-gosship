@@ -11,11 +11,12 @@ import (
 )
 
 func run(signer ssh.Signer) error {
-	sshClient, err := client.GetSSHClient(context.Background(), "client", "localhost", signer)
+	sshClient, pubKey, err := client.GetSSHClient(context.Background(), "client", "localhost", signer)
 	if err != nil {
 		return err
 	}
 	defer sshClient.Close()
+	log.Printf("server public key fingerprint: %s", pubKey)
 
 	adminClient, ch, err := client.AttachRPCAdminClient(context.Background(), sshClient, false)
 	if err != nil {

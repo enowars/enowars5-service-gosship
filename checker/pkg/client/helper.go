@@ -63,9 +63,10 @@ func (ch *CloseHandler) Execute() {
 }
 
 type SessionIO struct {
-	Session *ssh.Session
-	out     io.Reader
-	in      io.WriteCloser
+	Session   *ssh.Session
+	out       io.Reader
+	in        io.WriteCloser
+	PublicKey string
 }
 
 func (s *SessionIO) Read(p []byte) (n int, err error) {
@@ -86,7 +87,7 @@ func CreateSSHSession(ctx context.Context, user, addr string, privateKey ed25519
 		return nil, nil, nil, err
 	}
 
-	sshClient, err := GetSSHClient(ctx, user, addr, sshSigner)
+	sshClient, pubKey, err := GetSSHClient(ctx, user, addr, sshSigner)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -119,9 +120,10 @@ func CreateSSHSession(ctx context.Context, user, addr string, privateKey ed25519
 		return nil, nil, nil, err
 	}
 	sio := &SessionIO{
-		Session: session,
-		out:     out,
-		in:      in,
+		Session:   session,
+		out:       out,
+		in:        in,
+		PublicKey: pubKey,
 	}
 	err = session.Shell()
 	if err != nil {
