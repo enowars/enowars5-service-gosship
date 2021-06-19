@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/acarl005/stripansi"
@@ -32,17 +33,60 @@ var ErrVariantNotFound = errors.New("variant not found")
 var ErrInvalidVariant = errors.New("invalid variant database entry")
 var ErrResponseNotFoundTimeout = errors.New("the response was not received after a certain timeout")
 var ErrCheckStringNotFound = errors.New("the provided string was not found")
+var ErrSSHKeyMismatch = errors.New("ssh key mismatch")
 
 type Handler struct {
-	log *logrus.Logger
-	db  *database.Database
+	log                *logrus.Logger
+	db                 *database.Database
+	pubKeyMismatches   map[uint64]uint64
+	pubKeyMismatchesMu sync.Mutex
 }
 
 func New(log *logrus.Logger, db *database.Database) *Handler {
 	return &Handler{
-		log: log,
-		db:  db,
+		log:              log,
+		db:               db,
+		pubKeyMismatches: make(map[uint64]uint64),
 	}
+}
+
+func (h *Handler) validatePublicKey(pubKey string, teamId uint64) error {
+	teamEntry, err := h.db.GetTeamEntry(teamId)
+	if err != nil {
+		if err != badger.ErrKeyNotFound {
+			return err
+		}
+		teamEntry = &database.TeamEntry{
+			TeamId: teamId,
+		}
+	}
+
+	updateTeamEntry := false
+	if teamEntry.PublicKey == "" {
+		// we have no key in the db, so just save it
+		updateTeamEntry = true
+	} else if teamEntry.PublicKey != pubKey {
+		h.pubKeyMismatchesMu.Lock()
+		defer h.pubKeyMismatchesMu.Unlock()
+		h.log.Warnf("pubKeyMismatches: %v", h.pubKeyMismatches)
+
+		if h.pubKeyMismatches[teamId] < 12 {
+			h.pubKeyMismatches[teamId]++
+			return checker.NewMumbleError(ErrSSHKeyMismatch)
+		}
+		// reset mismatch count and update pub key
+		h.pubKeyMismatches[teamId] = 0
+		updateTeamEntry = true
+	}
+
+	if updateTeamEntry {
+		teamEntry.PublicKey = pubKey
+		if err := h.db.PutTeamEntry(teamEntry); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (h *Handler) sendMessageAndCheckResponse(ctx context.Context, sessIo *client.SessionIO, message, check string) error {
@@ -79,7 +123,7 @@ func (h *Handler) sendMessageAndCheckResponse(ctx context.Context, sessIo *clien
 	}
 }
 
-func (h *Handler) sendDirectMessage(ctx context.Context, userA *client.User, userB *client.User, addr, msg string) error {
+func (h *Handler) sendDirectMessage(ctx context.Context, teamId uint64, userA *client.User, userB *client.User, addr, msg string) error {
 	_, sessionIOUserA, chA, err := client.CreateSSHSession(ctx, userA.Name, addr, userA.PrivateKey)
 	if err != nil {
 		return err
@@ -97,17 +141,27 @@ func (h *Handler) sendDirectMessage(ctx context.Context, userA *client.User, use
 	}
 	defer ch.Execute()
 
+	err = h.validatePublicKey(sessionIO.PublicKey, teamId)
+	if err != nil {
+		return err
+	}
+
 	directMessage := fmt.Sprintf("/dm %s %s", userA.Name, msg)
 	checkStr := fmt.Sprintf("[dm][%s]:", userB.Name)
 	return h.sendMessageAndCheckResponse(ctx, sessionIO, directMessage, checkStr)
 }
 
-func (h *Handler) sendPrivateRoomMessage(ctx context.Context, userA *client.User, addr, room, password, msg string) error {
+func (h *Handler) sendPrivateRoomMessage(ctx context.Context, teamId uint64, userA *client.User, addr, room, password, msg string) error {
 	_, sessionIO, ch, err := client.CreateSSHSession(ctx, userA.Name, addr, userA.PrivateKey)
 	if err != nil {
 		return err
 	}
 	defer ch.Execute()
+
+	err = h.validatePublicKey(sessionIO.PublicKey, teamId)
+	if err != nil {
+		return err
+	}
 
 	createRoom := fmt.Sprintf("/create %s %s", room, password)
 	err = h.sendMessageAndCheckResponse(ctx, sessionIO, createRoom, "you are now in room "+room)
@@ -133,12 +187,12 @@ func (h *Handler) putFlagDirectMessage(ctx context.Context, message *checker.Tas
 		return nil, err
 	}
 
-	err = h.sendDirectMessage(ctx, userA, userB, message.Address, message.Flag)
+	err = h.sendDirectMessage(ctx, message.TeamId, userA, userB, message.Address, message.Flag)
 	if err != nil {
 		return nil, err
 	}
 
-	err = h.db.PutEntry(&database.Entry{
+	err = h.db.PutTaskChainEntry(&database.TaskChainEntry{
 		Type:        "flag",
 		Variant:     "dm",
 		TaskMessage: message,
@@ -160,12 +214,12 @@ func (h *Handler) putFlagPrivateRoom(ctx context.Context, message *checker.TaskM
 	}
 
 	room, password := client.GenerateRoomAndPassword()
-	err = h.sendPrivateRoomMessage(ctx, userA, message.Address, room, password, message.Flag)
+	err = h.sendPrivateRoomMessage(ctx, message.TeamId, userA, message.Address, room, password, message.Flag)
 	if err != nil {
 		return nil, err
 	}
 
-	err = h.db.PutEntry(&database.Entry{
+	err = h.db.PutTaskChainEntry(&database.TaskChainEntry{
 		Type:        "flag",
 		Variant:     "room",
 		TaskMessage: message,
@@ -196,7 +250,7 @@ func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) (*c
 }
 
 func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) error {
-	fi, err := h.db.GetEntry(message.TaskChainId)
+	fi, err := h.db.GetTaskChainEntry(message.TaskChainId)
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
 			return checker.ErrFlagNotFound
@@ -206,11 +260,16 @@ func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.Tas
 	if fi.Variant != "dm" {
 		return ErrInvalidVariant
 	}
-	sshClient, _, ch, err := client.CreateSSHSession(ctx, fi.UserA.Name, message.Address, fi.UserA.PrivateKey)
+	sshClient, sessionIO, ch, err := client.CreateSSHSession(ctx, fi.UserA.Name, message.Address, fi.UserA.PrivateKey)
 	if err != nil {
 		return err
 	}
 	defer ch.Execute()
+
+	err = h.validatePublicKey(sessionIO.PublicKey, message.TeamId)
+	if err != nil {
+		return err
+	}
 
 	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient, false)
 	if err != nil {
@@ -234,7 +293,7 @@ func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.Tas
 }
 
 func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *checker.TaskMessage) error {
-	fi, err := h.db.GetEntry(message.TaskChainId)
+	fi, err := h.db.GetTaskChainEntry(message.TaskChainId)
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
 			return checker.ErrFlagNotFound
@@ -249,6 +308,11 @@ func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *checker.TaskM
 		return err
 	}
 	defer ch.Execute()
+
+	err = h.validatePublicKey(sessionIO.PublicKey, message.TeamId)
+	if err != nil {
+		return err
+	}
 
 	joinCmd := fmt.Sprintf("/join %s %s", fi.Room, fi.Password)
 	err = h.sendMessageAndCheckResponse(ctx, sessionIO, joinCmd, message.Flag)
@@ -286,12 +350,12 @@ func (h *Handler) putNoiseDirectMessage(ctx context.Context, message *checker.Ta
 
 	noise := client.GenerateNoise()
 
-	err = h.sendDirectMessage(ctx, userA, userB, message.Address, noise)
+	err = h.sendDirectMessage(ctx, message.TeamId, userA, userB, message.Address, noise)
 	if err != nil {
 		return err
 	}
 
-	err = h.db.PutEntry(&database.Entry{
+	err = h.db.PutTaskChainEntry(&database.TaskChainEntry{
 		Type:        "noise",
 		Variant:     "dm",
 		TaskMessage: message,
@@ -308,7 +372,7 @@ func (h *Handler) putNoiseDirectMessage(ctx context.Context, message *checker.Ta
 }
 
 func (h *Handler) getNoiseDirectMessage(ctx context.Context, message *checker.TaskMessage) error {
-	fi, err := h.db.GetEntry(message.TaskChainId)
+	fi, err := h.db.GetTaskChainEntry(message.TaskChainId)
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
 			return checker.ErrFlagNotFound
@@ -323,6 +387,12 @@ func (h *Handler) getNoiseDirectMessage(ctx context.Context, message *checker.Ta
 		return err
 	}
 	defer ch.Execute()
+
+	err = h.validatePublicKey(sessionIO.PublicKey, message.TeamId)
+	if err != nil {
+		return err
+	}
+
 	historyCmd := fmt.Sprintf("/history %s", fi.UserB.Name)
 	err = h.sendMessageAndCheckResponse(ctx, sessionIO, historyCmd, fi.Noise)
 	if err != nil {
@@ -358,6 +428,7 @@ func (h *Handler) GetNoise(ctx context.Context, message *checker.TaskMessage) er
 }
 
 func (h *Handler) havocRPC(ctx context.Context, message *checker.TaskMessage) error {
+
 	userA, err := client.GenerateNewUser()
 	if err != nil {
 		return err
@@ -366,11 +437,16 @@ func (h *Handler) havocRPC(ctx context.Context, message *checker.TaskMessage) er
 	if err != nil {
 		return err
 	}
-	sshClient, err := client.GetSSHClient(ctx, "quote-bot", message.Address, signer)
+	sshClient, pubKey, err := client.GetSSHClient(ctx, "quote-bot", message.Address, signer)
 	if err != nil {
 		return err
 	}
 	defer sshClient.Close()
+
+	err = h.validatePublicKey(pubKey, message.TeamId)
+	if err != nil {
+		return err
+	}
 
 	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient, false)
 	if err != nil {
