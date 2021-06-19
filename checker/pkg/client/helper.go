@@ -66,7 +66,7 @@ type SessionIO struct {
 	Session   *ssh.Session
 	out       io.Reader
 	in        io.WriteCloser
-	PublicKey string
+	PublicKey ssh.PublicKey
 }
 
 func (s *SessionIO) Read(p []byte) (n int, err error) {

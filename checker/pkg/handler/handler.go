@@ -50,7 +50,8 @@ func New(log *logrus.Logger, db *database.Database) *Handler {
 	}
 }
 
-func (h *Handler) validatePublicKey(pubKey string, teamId uint64) error {
+func (h *Handler) validatePublicKey(pubKey ssh.PublicKey, teamId uint64) error {
+	pubKeyFingerprint := ssh.FingerprintSHA256(pubKey)
 	teamEntry, err := h.db.GetTeamEntry(teamId)
 	if err != nil {
 		if err != badger.ErrKeyNotFound {
@@ -65,12 +66,12 @@ func (h *Handler) validatePublicKey(pubKey string, teamId uint64) error {
 	if teamEntry.PublicKey == "" {
 		// we have no key in the db, so just save it
 		updateTeamEntry = true
-	} else if teamEntry.PublicKey != pubKey {
+	} else if teamEntry.PublicKey != pubKeyFingerprint {
 		h.pubKeyMismatchesMu.Lock()
 		defer h.pubKeyMismatchesMu.Unlock()
-		h.log.Warnf("pubKeyMismatches: %v", h.pubKeyMismatches)
 
 		if h.pubKeyMismatches[teamId] < 12 {
+			h.log.Warnf("public key missmatch (teamId=%d): %d", teamId, h.pubKeyMismatches[teamId])
 			h.pubKeyMismatches[teamId]++
 			return checker.NewMumbleError(ErrSSHKeyMismatch)
 		}
@@ -80,7 +81,7 @@ func (h *Handler) validatePublicKey(pubKey string, teamId uint64) error {
 	}
 
 	if updateTeamEntry {
-		teamEntry.PublicKey = pubKey
+		teamEntry.PublicKey = pubKeyFingerprint
 		if err := h.db.PutTeamEntry(teamEntry); err != nil {
 			return err
 		}

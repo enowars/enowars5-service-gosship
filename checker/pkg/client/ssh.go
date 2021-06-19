@@ -8,17 +8,17 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func GetSSHClient(ctx context.Context, user, addr string, signer ssh.Signer) (*ssh.Client, string, error) {
+func GetSSHClient(ctx context.Context, user, addr string, signer ssh.Signer) (*ssh.Client, ssh.PublicKey, error) {
 	fullAddr := addr + ":2222"
 	var d net.Dialer
 	conn, err := d.DialContext(ctx, "tcp", fullAddr)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
 
 	if dl, ok := ctx.Deadline(); ok {
 		if err := conn.SetDeadline(dl); err != nil {
-			return nil, "", err
+			return nil, nil, err
 		}
 	}
 
@@ -33,9 +33,9 @@ func GetSSHClient(ctx context.Context, user, addr string, signer ssh.Signer) (*s
 		},
 	})
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	}
-	return ssh.NewClient(c, chans, reqs), ssh.FingerprintSHA256(pubKey), nil
+	return ssh.NewClient(c, chans, reqs), pubKey, nil
 }
 
 func OpenRPCChannel(sshClient *ssh.Client) (ssh.Channel, error) {

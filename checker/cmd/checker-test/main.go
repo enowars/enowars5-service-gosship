@@ -16,7 +16,7 @@ func run(signer ssh.Signer) error {
 		return err
 	}
 	defer sshClient.Close()
-	log.Printf("server public key fingerprint: %s", pubKey)
+	log.Printf("server public key fingerprint: %s", ssh.FingerprintSHA256(pubKey))
 
 	adminClient, ch, err := client.AttachRPCAdminClient(context.Background(), sshClient, false)
 	if err != nil {
