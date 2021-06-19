@@ -4,6 +4,7 @@ import (
 	"checker/pkg/checker"
 	"checker/pkg/client"
 	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 
@@ -37,7 +38,39 @@ func NewDatabase(log *logrus.Logger) (*Database, error) {
 	}, nil
 }
 
-type Entry struct {
+func getPrefixedKey(prefix, key string) []byte {
+	return []byte(fmt.Sprintf("%s/%s", prefix, key))
+}
+
+func (db *Database) put(prefix, key string, data []byte) error {
+	db.log.Printf("put %s entry: %s", prefix, key)
+	entry := badger.NewEntry(getPrefixedKey(prefix, key), data)
+	return db.db.Update(func(txn *badger.Txn) error {
+		return txn.SetEntry(entry)
+	})
+}
+
+func (db *Database) get(prefix, key string) ([]byte, error) {
+	db.log.Printf("get %s entry: %s", prefix, key)
+	var val []byte
+	err := db.db.View(func(txn *badger.Txn) error {
+		get, err := txn.Get(getPrefixedKey(prefix, key))
+		if err != nil {
+			return err
+		}
+		val, err = get.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return val, nil
+}
+
+type TaskChainEntry struct {
 	Type        string               `json:"type"`
 	Variant     string               `json:"variant"`
 	TaskMessage *checker.TaskMessage `json:"taskMessage"`
@@ -49,35 +82,54 @@ type Entry struct {
 	Timestamp   time.Time            `json:"timestamp"`
 }
 
-func (db *Database) PutEntry(fi *Entry) error {
+func (db *Database) PutTaskChainEntry(fi *TaskChainEntry) error {
 	fi.Timestamp = time.Now()
 	data, err := json.Marshal(fi)
 	if err != nil {
 		return err
 	}
-	db.log.Printf("put entry: %s", fi.TaskMessage.TaskChainId)
-	entry := badger.NewEntry([]byte(fi.TaskMessage.TaskChainId), data)
-	return db.db.Update(func(txn *badger.Txn) error {
-		return txn.SetEntry(entry)
-	})
+	return db.put("task", fi.TaskMessage.TaskChainId, data)
 }
 
-func (db *Database) GetEntry(taskChainId string) (*Entry, error) {
-	db.log.Printf("get entry: %s", taskChainId)
-	var fi Entry
-	err := db.db.View(func(txn *badger.Txn) error {
-		get, err := txn.Get([]byte(taskChainId))
-		if err != nil {
-			return err
-		}
-		return get.Value(func(val []byte) error {
-			return json.Unmarshal(val, &fi)
-		})
-	})
+func (db *Database) GetTaskChainEntry(taskChainId string) (*TaskChainEntry, error) {
+	data, err := db.get("task", taskChainId)
 	if err != nil {
 		return nil, err
 	}
+	var fi TaskChainEntry
+	if err := json.Unmarshal(data, &fi); err != nil {
+		return nil, err
+	}
 	return &fi, nil
+}
+
+type TeamEntry struct {
+	TeamId    uint64    `json:"teamId"`
+	PublicKey string    `json:"publicKey"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+func (db *Database) PutTeamEntry(te *TeamEntry) error {
+	teamIdStr := fmt.Sprintf("%d", te.TeamId)
+	te.Timestamp = time.Now()
+	data, err := json.Marshal(te)
+	if err != nil {
+		return err
+	}
+	return db.put("team", teamIdStr, data)
+}
+
+func (db *Database) GetTeamEntry(teamId uint64) (*TeamEntry, error) {
+	teamIdStr := fmt.Sprintf("%d", teamId)
+	data, err := db.get("team", teamIdStr)
+	if err != nil {
+		return nil, err
+	}
+	var te TeamEntry
+	if err := json.Unmarshal(data, &te); err != nil {
+		return nil, err
+	}
+	return &te, nil
 }
 
 func (db *Database) Close() {
