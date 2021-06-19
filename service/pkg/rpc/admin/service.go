@@ -7,6 +7,7 @@ import (
 	"gosship/pkg/database"
 	"gosship/pkg/rpc/admin/auth"
 	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc/peer"
@@ -15,6 +16,7 @@ import (
 type AuthChallenge struct {
 	Challenge []byte
 	Session   string
+	Timestamp time.Time
 }
 
 type Service struct {
@@ -30,6 +32,7 @@ type Service struct {
 
 var ErrInvalidRequest = errors.New("invalid request")
 var ErrInvalidAuthChallenge = errors.New("invalid auth challenge")
+var ErrExpiredAuthChallenge = errors.New("expired auth challenge")
 var ErrInvalidSSHSession = errors.New("invalid ssh session")
 var ErrInvalidAuthSignature = errors.New("invalid auth signature")
 var ErrInvalidSessionToken = errors.New("invalid session token")
@@ -53,6 +56,7 @@ func (s *Service) GetAuthChallenge(ctx context.Context, request *GetAuthChalleng
 	challenge := &AuthChallenge{
 		Challenge: challengePayload,
 		Session:   peer.Addr.String(),
+		Timestamp: time.Now(),
 	}
 	s.authChallengesMu.Lock()
 	defer s.authChallengesMu.Unlock()
@@ -77,6 +81,11 @@ func (s *Service) Auth(ctx context.Context, request *Auth_Request) (*Auth_Respon
 	}
 	if challenge.Session != peer.Addr.String() {
 		return nil, ErrInvalidSSHSession
+	}
+
+	if challenge.Timestamp.Before(time.Now().Add(-10 * time.Second)) {
+		delete(s.authChallenges, request.ChallengeId)
+		return nil, ErrExpiredAuthChallenge
 	}
 	if !auth.VerifySignature(challenge.Challenge, request.Signature) {
 		return nil, ErrInvalidAuthSignature
