@@ -272,7 +272,7 @@ func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.Tas
 		return err
 	}
 
-	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient, false)
+	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient, sessionIO.PublicKey, false)
 	if err != nil {
 		return err
 	}
@@ -449,7 +449,7 @@ func (h *Handler) havocRPC(ctx context.Context, message *checker.TaskMessage) er
 		return err
 	}
 
-	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient, false)
+	adminClient, chRpc, err := client.AttachRPCAdminClient(ctx, sshClient, pubKey, false)
 	if err != nil {
 		return err
 	}

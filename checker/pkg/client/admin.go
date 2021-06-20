@@ -6,8 +6,10 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/hex"
+	"errors"
 	"io"
 
+	"golang.org/x/crypto/ssh"
 	"google.golang.org/grpc"
 )
 
@@ -21,17 +23,35 @@ func init() {
 	PrivateKey = privateKeyRaw
 }
 
+var ErrInvalidAuthChallenge = errors.New("invalid auth challenge")
+
 type AdminClient struct {
 	svc          admin.AdminServiceClient
 	SessionToken string
+	PublicKey    ssh.PublicKey
 }
 
-func NewAdminClient(grpcConn *grpc.ClientConn) *AdminClient {
-	return &AdminClient{svc: admin.NewAdminServiceClient(grpcConn)}
+func NewAdminClient(grpcConn *grpc.ClientConn, publicKey ssh.PublicKey) *AdminClient {
+	return &AdminClient{
+		svc:       admin.NewAdminServiceClient(grpcConn),
+		PublicKey: publicKey,
+	}
 }
 
 func (a *AdminClient) Auth() (string, error) {
 	authChallenge, err := a.svc.GetAuthChallenge(context.Background(), &admin.GetAuthChallenge_Request{})
+	if err != nil {
+		return "", err
+	}
+
+	if len(authChallenge.Challenge) != 576 {
+		return "", ErrInvalidAuthChallenge
+	}
+
+	err = a.PublicKey.Verify(authChallenge.Challenge[:512], &ssh.Signature{
+		Format: "ssh-ed25519",
+		Blob:   authChallenge.Challenge[512:],
+	})
 	if err != nil {
 		return "", err
 	}
