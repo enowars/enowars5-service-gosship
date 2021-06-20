@@ -46,7 +46,7 @@ func run(log *logrus.Logger) error {
 	go h.Cleanup()
 
 	log.Println("starting grpc server...")
-	rpcServer := rpc.NewGRPCServer(log, db, h)
+	rpcServer := rpc.NewGRPCServer(log, db, h, signer)
 	go rpcServer.Serve()
 
 	log.Println("starting ssh server...")

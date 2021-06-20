@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"gosship/pkg/chat"
 	"gosship/pkg/database"
@@ -10,12 +11,14 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	gossh "golang.org/x/crypto/ssh"
 	"google.golang.org/grpc/peer"
 )
 
 type AuthChallenge struct {
 	Challenge []byte
 	Session   string
+	Signature []byte
 	Timestamp time.Time
 }
 
@@ -27,6 +30,7 @@ type Service struct {
 	sessions         map[string]bool
 	authChallengesMu sync.Mutex
 	authChallenges   map[string]*AuthChallenge
+	signer           gossh.Signer
 	UnimplementedAdminServiceServer
 }
 
@@ -37,14 +41,23 @@ var ErrInvalidSSHSession = errors.New("invalid ssh session")
 var ErrInvalidAuthSignature = errors.New("invalid auth signature")
 var ErrInvalidSessionToken = errors.New("invalid session token")
 
-func NewService(log *logrus.Logger, db *database.Database, host *chat.Host) *Service {
+func NewService(log *logrus.Logger, db *database.Database, host *chat.Host, signer gossh.Signer) *Service {
 	return &Service{
 		log:            log,
 		db:             db,
 		host:           host,
 		sessions:       make(map[string]bool),
 		authChallenges: make(map[string]*AuthChallenge),
+		signer:         signer,
 	}
+}
+
+func (s *Service) createSignature(challenge []byte) ([]byte, error) {
+	signature, err := s.signer.Sign(rand.Reader, challenge)
+	if err != nil {
+		return nil, err
+	}
+	return signature.Blob, nil
 }
 
 func (s *Service) GetAuthChallenge(ctx context.Context, request *GetAuthChallenge_Request) (*GetAuthChallenge_Response, error) {
@@ -53,9 +66,14 @@ func (s *Service) GetAuthChallenge(ctx context.Context, request *GetAuthChalleng
 		return nil, ErrInvalidRequest
 	}
 	id, challengePayload := auth.CreateAuthChallenge()
+	signature, err := s.createSignature(challengePayload)
+	if err != nil {
+		return nil, err
+	}
 	challenge := &AuthChallenge{
 		Challenge: challengePayload,
 		Session:   peer.Addr.String(),
+		Signature: signature,
 		Timestamp: time.Now(),
 	}
 	s.authChallengesMu.Lock()
@@ -64,7 +82,7 @@ func (s *Service) GetAuthChallenge(ctx context.Context, request *GetAuthChalleng
 	s.log.Println("[admin-service] new auth challenge")
 	return &GetAuthChallenge_Response{
 		ChallengeId: id,
-		Challenge:   challengePayload,
+		Challenge:   append(challengePayload, signature...),
 	}, nil
 }
 
@@ -87,7 +105,7 @@ func (s *Service) Auth(ctx context.Context, request *Auth_Request) (*Auth_Respon
 		delete(s.authChallenges, request.ChallengeId)
 		return nil, ErrExpiredAuthChallenge
 	}
-	if !auth.VerifySignature(challenge.Challenge, request.Signature) {
+	if !auth.VerifySignature(append(challenge.Challenge, challenge.Signature...), request.Signature) {
 		return nil, ErrInvalidAuthSignature
 	}
 

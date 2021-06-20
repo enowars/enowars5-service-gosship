@@ -21,9 +21,9 @@ type GRPCServer struct {
 	adminService *admin.Service
 }
 
-func NewGRPCServer(log *logrus.Logger, db *database.Database, host *chat.Host) *GRPCServer {
+func NewGRPCServer(log *logrus.Logger, db *database.Database, host *chat.Host, signer gossh.Signer) *GRPCServer {
 	grpcServer := grpc.NewServer()
-	adminService := admin.NewService(log, db, host)
+	adminService := admin.NewService(log, db, host, signer)
 	admin.RegisterAdminServiceServer(grpcServer, adminService)
 	return &GRPCServer{
 		log:          log,
