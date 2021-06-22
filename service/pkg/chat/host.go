@@ -378,8 +378,12 @@ func (h *Host) RouteMessage(msg Message) {
 func (h *Host) HasRoom(room string) bool {
 	h.roomsMu.RLock()
 	defer h.roomsMu.RUnlock()
-	_, ok := h.Rooms[room]
-	return ok
+	for roomName := range h.Rooms {
+		if strings.EqualFold(roomName, room) {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *Host) CreateRoom(room, password string) error {

@@ -9,9 +9,8 @@ import (
 	"io"
 	"strings"
 
-	"golang.org/x/crypto/ssh"
-
 	"github.com/Pallinder/go-randomdata"
+	"golang.org/x/crypto/ssh"
 )
 
 type User struct {
@@ -19,11 +18,22 @@ type User struct {
 	PrivateKey ed25519.PrivateKey `json:"privateKey"`
 }
 
+func randomizeLetterCases(word string) string {
+	var builder strings.Builder
+	for _, s := range strings.Split(strings.ToLower(word), "") {
+		if randomdata.Boolean() {
+			s = strings.ToUpper(s)
+		}
+		builder.WriteString(s)
+	}
+	return builder.String()
+}
+
 func GenerateRoomAndPassword() (string, string) {
 	room := fmt.Sprintf("%s-%s-%s-%s", randomdata.Adjective(), randomdata.Adjective(), randomdata.Noun(), randomdata.BoundedDigits(6, 0, 999999))
 	pwBuf := make([]byte, 16)
 	_, _ = rand.Reader.Read(pwBuf)
-	return strings.ToLower(room), hex.EncodeToString(pwBuf)
+	return randomizeLetterCases(room), hex.EncodeToString(pwBuf)
 }
 
 func GenerateNewUser() (*User, error) {
