@@ -109,6 +109,7 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 	welcomeMessage.WriteString(aurora.Sprintf("%s\n\n", aurora.Green(title)))
 	welcomeMessage.WriteString(aurora.Sprintf(":unicorn:welcome %s!\n", u.RenderName(true)))
 	welcomeMessage.WriteString(aurora.Sprintf("you are now in room %s and %s\n", aurora.Blue(u.CurrentRoom), h.ServerInfo()))
+	welcomeMessage.WriteString(aurora.Sprintf("use %s to list all available commands.\n", aurora.Green("/help")))
 	err = u.WriteLine(emoji.Sprint(welcomeMessage.String()))
 	if err != nil {
 		return err
