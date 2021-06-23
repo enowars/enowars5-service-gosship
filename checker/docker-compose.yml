@@ -1,11 +1,21 @@
-version: '3'
+version: '2.1'
+
 services:
   checker:
     build: .
     volumes:
       - db-data:/app/db
     ports:
-      - "2002:2002"
+      - 2002:2002
+    mem_limit: 1G
+    memswap_limit: 2G
+    ulimits:
+      core:
+        soft: 0
+        hard: 0
+      nproc:
+        soft: 4000
+        hard: 4000
 
 volumes:
   db-data:
