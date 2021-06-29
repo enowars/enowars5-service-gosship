@@ -432,7 +432,7 @@ func (h *Host) resetRoomForConnectedUsers(room string) {
 func (h *Host) cleanupRooms() error {
 	h.roomsMu.Lock()
 	defer h.roomsMu.Unlock()
-	pastMarker := time.Now().Add(-3 * time.Hour)
+	pastMarker := time.Now().Add(-2 * time.Hour)
 	update := false
 	for roomName, roomEntry := range h.Rooms {
 		if roomEntry.Timestamp != nil && roomEntry.Timestamp.AsTime().Before(pastMarker) {
