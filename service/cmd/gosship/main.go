@@ -9,6 +9,7 @@ import (
 	"gosship/pkg/utils"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -100,6 +101,7 @@ func run(log *logrus.Logger) error {
 }
 
 func main() {
+	runtime.GOMAXPROCS(128)
 	log := logger.New(logrus.InfoLevel)
 	if err := run(log); err != nil {
 		log.Fatal(err)

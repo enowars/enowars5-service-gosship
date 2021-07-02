@@ -55,7 +55,9 @@ type Database struct {
 }
 
 func NewDatabase(log *logrus.Logger) (*Database, error) {
-	opts := badger.DefaultOptions(databasePath).WithLogger(log).WithLoggingLevel(badger.WARNING)
+	opts := badger.DefaultOptions(databasePath).
+		WithLogger(log).
+		WithLoggingLevel(badger.WARNING)
 	db, err := badger.Open(opts)
 	if err != nil {
 		return nil, err
@@ -74,7 +76,9 @@ func (db *Database) addNewEntry(meta byte, id string, msg proto.Message) error {
 		return err
 	}
 
-	entry := badger.NewEntry(getKeyWithPrefix(meta, id), val).WithMeta(meta)
+	entry := badger.NewEntry(getKeyWithPrefix(meta, id), val).
+		WithMeta(meta).
+		WithDiscard()
 
 	switch meta {
 	case TypeMessageEntry:

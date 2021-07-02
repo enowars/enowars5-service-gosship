@@ -572,7 +572,7 @@ func NewHost(log *logrus.Logger, db *database.Database, rooms map[string]*databa
 	return &Host{
 		Log:                        log,
 		users:                      make(map[string]*User),
-		msgChan:                    make(chan Message, 50),
+		msgChan:                    make(chan Message, 4096),
 		Database:                   db,
 		Rooms:                      rooms,
 		DisableUserAnnouncements:   true,
