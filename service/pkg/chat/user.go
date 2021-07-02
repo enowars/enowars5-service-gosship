@@ -31,9 +31,7 @@ type User struct {
 
 func NewUser(db *database.Database, session ssh.Session) (*User, error) {
 	name := session.User()
-	userId, userEntry, err := db.FindUserByPredicate(func(entry *database.UserEntry) bool {
-		return entry.Name == name
-	})
+	userId, userEntry, err := db.FindUserByIndex(database.IndexUserName, name)
 	if err != nil {
 		return nil, err
 	}
@@ -44,9 +42,7 @@ func NewUser(db *database.Database, session ssh.Session) (*User, error) {
 	}
 
 	if userId == "" {
-		fingerprintUserId, _, err := db.FindUserByPredicate(func(entry *database.UserEntry) bool {
-			return entry.Fingerprint == fingerprint
-		})
+		fingerprintUserId, _, err := db.FindUserByIndex(database.IndexUserFingerprint, fingerprint)
 		if err != nil {
 			return nil, err
 		}

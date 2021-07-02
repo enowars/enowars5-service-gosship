@@ -239,9 +239,7 @@ func (h *Host) resolveUserNameToID(name string) string {
 	if u, ok := h.users[name]; ok {
 		return u.Id
 	}
-	id, _, err := h.Database.FindUserByPredicate(func(entry *database.UserEntry) bool {
-		return entry.Name == name
-	})
+	id, _, err := h.Database.FindUserByIndex(database.IndexUserName, name)
 	if err != nil {
 		return ""
 	}

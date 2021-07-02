@@ -115,9 +115,7 @@ var Commands = []*Command{
 				return fmt.Errorf("user argument is missing")
 			}
 
-			uid, _, err := h.Database.FindUserByPredicate(func(entry *database.UserEntry) bool {
-				return entry.Name == msg.Args[0]
-			})
+			uid, _, err := h.Database.FindUserByIndex(database.IndexUserName, msg.Args[0])
 			if err != nil {
 				h.Log.Error(err)
 				return fmt.Errorf("user not found")

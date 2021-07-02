@@ -26,9 +26,10 @@ const (
 	TypeUserEntry
 	TypeMessageEntry
 	TypeRoomConfigEntry
+	TypeIndexEntry
 )
 
-var (
+const (
 	configEntryKey     = "server-config"
 	roomConfigEntryKey = "room-config"
 )
@@ -40,12 +41,23 @@ var entryToPrefix = map[byte]string{
 	TypeRoomConfigEntry: "config",
 }
 
+type Index string
+
+const (
+	IndexUserName        = Index("user/name")
+	IndexUserFingerprint = Index("user/fingerprint")
+)
+
 func getKeyWithPrefix(meta byte, keyParts ...string) []byte {
 	return []byte(fmt.Sprintf("%s/%s", entryToPrefix[meta], strings.Join(keyParts, "/")))
 }
 
 func stripKeyPrefix(meta byte, key []byte) string {
 	return strings.Replace(string(key), entryToPrefix[meta]+"/", "", 1)
+}
+
+func getIndexKey(index Index, key string) []byte {
+	return []byte(fmt.Sprintf("index/%s/%s", index, key))
 }
 
 type Database struct {
@@ -70,27 +82,50 @@ func NewDatabase(log *logrus.Logger) (*Database, error) {
 	}, nil
 }
 
-func (db *Database) addNewEntry(meta byte, id string, msg proto.Message) error {
+func createIndexEntry(index Index, key string, ttl time.Duration, ref []byte) *badger.Entry {
+	return badger.NewEntry(getIndexKey(index, key), ref).WithMeta(TypeIndexEntry).WithTTL(ttl)
+}
+
+func createNewEntries(meta byte, id string, msg proto.Message) ([]*badger.Entry, error) {
 	val, err := proto.Marshal(msg)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	entry := badger.NewEntry(getKeyWithPrefix(meta, id), val).
 		WithMeta(meta).
 		WithDiscard()
 
+	entries := []*badger.Entry{entry}
 	switch meta {
 	case TypeMessageEntry:
 		// messages expire after 30 minutes
 		entry.WithTTL(30 * time.Minute)
 	case TypeUserEntry:
 		// users expire after 2 hours after the last login
-		entry.WithTTL(2 * time.Hour)
+		ttl := 2 * time.Hour
+		entry.WithTTL(ttl)
+		u := msg.(*UserEntry)
+		entries = append(entries,
+			createIndexEntry(IndexUserName, u.Name, ttl, entry.Key),
+			createIndexEntry(IndexUserFingerprint, u.Fingerprint, ttl, entry.Key))
+	}
+	return entries, nil
+}
+
+func (db *Database) addNewEntry(meta byte, id string, msg proto.Message) error {
+	entries, err := createNewEntries(meta, id, msg)
+	if err != nil {
+		return err
 	}
 
 	return db.db.Update(func(txn *badger.Txn) error {
-		return txn.SetEntry(entry)
+		for _, e := range entries {
+			if err := txn.SetEntry(e); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
@@ -156,31 +191,40 @@ func (db *Database) AddOrUpdateUser(id string, u *UserEntry) error {
 	return db.addNewEntry(TypeUserEntry, id, u)
 }
 
-func (db *Database) FindUserByPredicate(predicate func(entry *UserEntry) bool) (string, *UserEntry, error) {
+func (db *Database) FindUserByIndex(index Index, searchKey string) (string, *UserEntry, error) {
 	var ue *UserEntry
 	var usedId string
 	err := db.db.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-		prefix := getKeyWithPrefix(TypeUserEntry)
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			if item.UserMeta() != TypeUserEntry {
-				continue
-			}
-			var tmp UserEntry
-			err := it.Item().Value(func(val []byte) error {
-				return proto.Unmarshal(val, &tmp)
-			})
-			if err != nil {
-				return err
-			}
-			if predicate(&tmp) {
-				ue = &tmp
-				usedId = stripKeyPrefix(TypeUserEntry, item.Key())
+		indexItem, err := txn.Get(getIndexKey(index, searchKey))
+		if err != nil {
+			if err == badger.ErrKeyNotFound {
 				return nil
 			}
+			return err
 		}
+		userKey, err := indexItem.ValueCopy(nil)
+		if err != nil {
+			return err
+		}
+		userItem, err := txn.Get(userKey)
+		if err != nil {
+			if err == badger.ErrKeyNotFound {
+				return nil
+			}
+			return err
+		}
+		if userItem.UserMeta() != TypeUserEntry {
+			return fmt.Errorf("invlid database record type")
+		}
+		var tmp UserEntry
+		err = userItem.Value(func(val []byte) error {
+			return proto.Unmarshal(val, &tmp)
+		})
+		if err != nil {
+			return err
+		}
+		ue = &tmp
+		usedId = stripKeyPrefix(TypeUserEntry, userKey)
 		return nil
 	})
 	if err != nil {
@@ -189,29 +233,12 @@ func (db *Database) FindUserByPredicate(predicate func(entry *UserEntry) bool) (
 	return usedId, ue, nil
 }
 
-func (db *Database) UpdateUserFingerprint(username, fingerprint string) error {
-	db.log.Printf("updating fingerprint for user: %s", username)
-	userId, userEntry, err := db.FindUserByPredicate(func(entry *UserEntry) bool {
-		return entry.Name == username
-	})
-	if err != nil {
-		return err
-	}
-	if userId == "" {
-		return fmt.Errorf("user %s not found", username)
-	}
-	userEntry.Fingerprint = fingerprint
-	return db.addNewEntry(TypeUserEntry, userId, userEntry)
-}
-
 func (db *Database) AddMessageEntry(m *MessageEntry) error {
 	return db.addNewEntry(TypeMessageEntry, uuid.NewString(), m)
 }
 
 func (db *Database) RenameUser(id, newUsername string) error {
-	userId, _, err := db.FindUserByPredicate(func(entry *UserEntry) bool {
-		return entry.Name == newUsername
-	})
+	userId, _, err := db.FindUserByIndex(IndexUserName, newUsername)
 	if err != nil {
 		return err
 	}
@@ -233,12 +260,23 @@ func (db *Database) RenameUser(id, newUsername string) error {
 		if err != nil {
 			return err
 		}
-		tmp.Name = newUsername
-		updatedVal, err := proto.Marshal(&tmp)
+		err = txn.Delete(getIndexKey(IndexUserName, tmp.Name))
 		if err != nil {
 			return err
 		}
-		return txn.SetEntry(badger.NewEntry(getKeyWithPrefix(TypeUserEntry, id), updatedVal).WithMeta(TypeUserEntry))
+
+		tmp.Name = newUsername
+
+		entries, err := createNewEntries(TypeUserEntry, id, &tmp)
+		if err != nil {
+			return err
+		}
+		for _, entry := range entries {
+			if err := txn.SetEntry(entry); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 }
 
@@ -354,9 +392,7 @@ func (db *Database) GetUserById(id string) (*UserEntry, error) {
 }
 
 func (db *Database) DumpDirectMessages(username string, emit func(*MessageEntry) error) error {
-	id, _, err := db.FindUserByPredicate(func(entry *UserEntry) bool {
-		return entry.Name == username
-	})
+	id, _, err := db.FindUserByIndex(IndexUserName, username)
 	if err != nil {
 		return err
 	}
