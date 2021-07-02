@@ -32,16 +32,21 @@ func randomString() string {
 
 const Timeout = 15000
 
-func createPutFlagPayload(variant uint64) io.Reader {
-	taskMessage := &checker.TaskMessage{
-		Method:      checker.TaskMessageMethodPutFlag,
+func createTaskMessage(method checker.TaskMessageMethod) checker.TaskMessage {
+	return checker.TaskMessage{
+		Method:      method,
 		Address:     "127.0.0.1",
 		TeamName:    "team",
+		VariantId:   0,
 		Flag:        "ENO" + randomString(),
-		VariantId:   variant,
 		Timeout:     Timeout,
 		TaskChainId: randomString(),
 	}
+}
+
+func createPutFlagPayload(variant uint64) io.Reader {
+	taskMessage := createTaskMessage(checker.TaskMessageMethodPutFlag)
+	taskMessage.VariantId = variant
 	rawPayload, err := json.Marshal(taskMessage)
 	if err != nil {
 		panic(err)
@@ -50,15 +55,15 @@ func createPutFlagPayload(variant uint64) io.Reader {
 }
 
 func createPutNoisePayload() io.Reader {
-	taskMessage := &checker.TaskMessage{
-		Method:      checker.TaskMessageMethodPutNoise,
-		Address:     "127.0.0.1",
-		TeamName:    "team",
-		VariantId:   0,
-		Timeout:     Timeout,
-		TaskChainId: randomString(),
+	rawPayload, err := json.Marshal(createTaskMessage(checker.TaskMessageMethodPutNoise))
+	if err != nil {
+		panic(err)
 	}
-	rawPayload, err := json.Marshal(taskMessage)
+	return bytes.NewReader(rawPayload)
+}
+
+func createHavocPayload() io.Reader {
+	rawPayload, err := json.Marshal(createTaskMessage(checker.TaskMessageMethodHavoc))
 	if err != nil {
 		panic(err)
 	}
@@ -69,13 +74,18 @@ func sendRequest(group, cnt int, client *http.Client) error {
 	variant := uint64(cnt % 2)
 	var payload io.Reader
 	var pType string
-	if group%2 == 0 {
+	switch group % 3 {
+	case 0:
 		pType = "F"
 		payload = createPutFlagPayload(variant)
-	} else {
+	case 1:
 		pType = "N"
 		payload = createPutNoisePayload()
+	default:
+		pType = "H"
+		payload = createHavocPayload()
 	}
+
 	logPrefix := fmt.Sprintf("[%02d:%03d:%s:var(%d)]:", group, cnt, pType, variant)
 
 	start := time.Now()
@@ -103,8 +113,8 @@ func sendRequest(group, cnt int, client *http.Client) error {
 	return nil
 }
 
-func send100Requests(group int, client *http.Client) {
-	for i := 0; i < 100; i++ {
+func send1000Requests(group int, client *http.Client) {
+	for i := 0; i < 1000; i++ {
 		err := sendRequest(group, i, client)
 		if err != nil {
 			log.Println(err)
@@ -121,10 +131,10 @@ func run() error {
 		Timeout: Timeout * time.Millisecond,
 	}
 	var wg sync.WaitGroup
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 99; i++ {
 		wg.Add(1)
 		go func(group int) {
-			send100Requests(group, client)
+			send1000Requests(group, client)
 			wg.Done()
 		}(i)
 	}
