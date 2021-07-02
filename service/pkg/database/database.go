@@ -296,7 +296,6 @@ func (m MessageEntries) Swap(i, j int) {
 
 func (db *Database) GetRecentMessagesForUserAndRoom(uid, room string) (MessageEntries, error) {
 	res := make(MessageEntries, 0)
-	pastMarker := time.Now().Add(-15 * time.Minute)
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
@@ -312,9 +311,6 @@ func (db *Database) GetRecentMessagesForUserAndRoom(uid, room string) (MessageEn
 			})
 			if err != nil {
 				return err
-			}
-			if tmp.Timestamp.AsTime().Before(pastMarker) {
-				continue
 			}
 			if tmp.Type == MessageType_DIRECT && tmp.To != uid && tmp.From != uid {
 				continue
@@ -335,7 +331,6 @@ func (db *Database) GetRecentMessagesForUserAndRoom(uid, room string) (MessageEn
 
 func (db *Database) GetRecentDirectMessagesForUser(selfId, uid string) (MessageEntries, error) {
 	res := make(MessageEntries, 0)
-	pastMarker := time.Now().Add(-15 * time.Minute)
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
@@ -353,9 +348,6 @@ func (db *Database) GetRecentDirectMessagesForUser(selfId, uid string) (MessageE
 				return err
 			}
 			if tmp.Type != MessageType_DIRECT {
-				continue
-			}
-			if tmp.Timestamp.AsTime().Before(pastMarker) {
 				continue
 			}
 			if (tmp.To == selfId && tmp.From == uid) || (tmp.From == selfId && tmp.To == uid) {
@@ -477,6 +469,47 @@ func (db *Database) DumpUsers() (UserEntries, error) {
 	}
 	sort.Sort(res)
 	return res, err
+}
+
+func (db *Database) DumpToLog() {
+	err := db.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		for it.Rewind(); it.Valid(); it.Next() {
+			item := it.Item()
+			key := string(item.Key())
+			val, err := item.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			switch item.UserMeta() {
+			case TypeIndexEntry:
+				db.log.Infof("IDX(%s): %s", key, string(val))
+			case TypeUserEntry:
+				var tmp UserEntry
+				_ = proto.Unmarshal(val, &tmp)
+				db.log.Infof("USR(%s): %s", key, tmp.String())
+			case TypeMessageEntry:
+				var tmp MessageEntry
+				_ = proto.Unmarshal(val, &tmp)
+				db.log.Infof("MSG(%s): %s", key, tmp.String())
+			case TypeRoomConfigEntry:
+				var tmp RoomConfigEntry
+				_ = proto.Unmarshal(val, &tmp)
+				db.log.Infof("CFG(%s): %s", key, tmp.String())
+			case TypeConfigEntry:
+				var tmp ConfigEntry
+				_ = proto.Unmarshal(val, &tmp)
+				db.log.Infof("CFG(%s): %s", key, tmp.String())
+			default:
+				db.log.Warnf("unknown key: %s", key)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		db.log.Error(err)
+	}
 }
 
 func (db *Database) runGC() {
