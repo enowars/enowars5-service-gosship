@@ -228,7 +228,7 @@ var Commands = []*Command{
 				return err
 			}
 			_ = msg.From.WriteLine(aurora.Sprintf("you are now in room %s.", aurora.Blue(roomName)))
-			if err := h.ShowRecentMessages(msg.From, true); err != nil {
+			if err := h.ShowRecentMessages(msg.From, true, false); err != nil {
 				return err
 			}
 			h.JoinRoomAnnouncement(msg.From)

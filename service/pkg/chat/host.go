@@ -27,11 +27,10 @@ type Host struct {
 	Rooms             map[string]*database.RoomEntry
 	cleanupTickerStop chan struct{}
 
-	// hide user joined/left messages
-	DisableUserAnnouncements bool
-
-	DisableRoomAnnouncements   bool
-	DisableServerAnnouncements bool
+	DisableUserAnnouncements   bool // hide user joined/left messages
+	DisableRoomAnnouncements   bool // hide rename, user joined/left and admin rpc messages
+	DisableServerAnnouncements bool // hide room created and server shutdown messages
+	DisableAnnouncementsOnJoin bool // hide announcements when joining the server or a room
 }
 
 func (h *Host) HandleNewSession(session ssh.Session) {
@@ -115,7 +114,7 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 		return err
 	}
 
-	err = h.ShowRecentMessages(u, false)
+	err = h.ShowRecentMessages(u, false, false)
 	if err != nil {
 		return err
 	}
@@ -164,12 +163,14 @@ func (h *Host) Serve() {
 			msgEntry.Room = v.Room
 			h.sendMessageToAllUsersInRoom(v)
 		case *RoomAnnouncementMessage:
+			saveToDatabase = !h.DisableAnnouncementsOnJoin
 			msgEntry.Type = database.MessageType_ROOM_ANNOUNCEMENT
 			msgEntry.Body = v.Body
 			msgEntry.Timestamp = timestamppb.New(v.Timestamp)
 			msgEntry.Room = v.Room
 			h.sendMessageToAllUsersInRoom(v)
 		case *AnnouncementMessage:
+			saveToDatabase = !h.DisableAnnouncementsOnJoin && !h.DisableServerAnnouncements
 			msgEntry.Type = database.MessageType_ANNOUNCEMENT
 			msgEntry.Body = v.Body
 			msgEntry.Timestamp = timestamppb.New(v.Timestamp)
@@ -430,7 +431,7 @@ func (h *Host) resetRoomForConnectedUsers(room string) {
 func (h *Host) cleanupRooms() error {
 	h.roomsMu.Lock()
 	defer h.roomsMu.Unlock()
-	pastMarker := time.Now().Add(-2 * time.Hour)
+	pastMarker := time.Now().Add(-1 * time.Hour)
 	update := false
 	for roomName, roomEntry := range h.Rooms {
 		if roomEntry.Timestamp != nil && roomEntry.Timestamp.AsTime().Before(pastMarker) {
@@ -498,19 +499,16 @@ func (h *Host) ListUsersForUser(from *User) error {
 	return nil
 }
 
-func (h *Host) ShowRecentMessages(u *User, skipAnnouncements bool) error {
-	oldMessages, err := h.Database.GetRecentMessagesForUserAndRoom(u.Id, u.CurrentRoom)
+func (h *Host) ShowRecentMessages(u *User, skipGlobalAnnouncements, skipRoomAnnouncements bool) error {
+	oldMessages, err := h.Database.GetRecentMessagesForRoom(u.CurrentRoom, h.DisableAnnouncementsOnJoin || skipGlobalAnnouncements)
 	if err != nil {
 		return err
 	}
 	for _, oldMsg := range oldMessages {
-		// skip dm history
-		if oldMsg.Type == database.MessageType_DIRECT {
+		if (h.DisableAnnouncementsOnJoin || skipRoomAnnouncements) && oldMsg.Type == database.MessageType_ROOM_ANNOUNCEMENT {
 			continue
 		}
-		if skipAnnouncements && oldMsg.Type == database.MessageType_ANNOUNCEMENT {
-			continue
-		}
+
 		conMsg, err := h.ConvertMessageEntryToMessage(oldMsg)
 		if err != nil {
 			h.Log.Error(err)
@@ -545,7 +543,7 @@ func (h *Host) ListRoomsForUser(from *User) error {
 }
 
 func (h *Host) Cleanup() {
-	ticker := time.NewTicker(3 * time.Minute)
+	ticker := time.NewTicker(2 * time.Minute)
 	defer ticker.Stop()
 	h.Log.Info("cleanup started...")
 	for {
@@ -576,6 +574,7 @@ func NewHost(log *logrus.Logger, db *database.Database, rooms map[string]*databa
 		DisableUserAnnouncements:   true,
 		DisableRoomAnnouncements:   false,
 		DisableServerAnnouncements: true,
+		DisableAnnouncementsOnJoin: true,
 		cleanupTickerStop:          make(chan struct{}, 1),
 	}
 }

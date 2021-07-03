@@ -85,6 +85,8 @@ func run(log *logrus.Logger) error {
 	defer cancel()
 
 	h.Announcement(":no_entry_sign:server is shutting down :no_entry_sign:")
+	<-time.After(time.Second)
+
 	err = srv.Shutdown(ctx)
 	if err == context.DeadlineExceeded {
 		log.Println("force closing all active connections...")

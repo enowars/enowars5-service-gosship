@@ -102,8 +102,8 @@ func createNewEntries(meta byte, id string, msg proto.Message) ([]*badger.Entry,
 		// messages expire after 30 minutes
 		entry.WithTTL(30 * time.Minute)
 	case TypeUserEntry:
-		// users expire after 2 hours after the last login
-		ttl := 2 * time.Hour
+		// users expire after 1 hour after the last login
+		ttl := 1 * time.Hour
 		entry.WithTTL(ttl)
 		u := msg.(*UserEntry)
 		entries = append(entries,
@@ -234,7 +234,17 @@ func (db *Database) FindUserByIndex(index Index, searchKey string) (string, *Use
 }
 
 func (db *Database) AddMessageEntry(m *MessageEntry) error {
-	return db.addNewEntry(TypeMessageEntry, uuid.NewString(), m)
+	prefix := "unknown"
+	switch m.Type {
+	case MessageType_PUBLIC, MessageType_ROOM_ANNOUNCEMENT:
+		prefix = "room/" + m.Room
+	case MessageType_DIRECT:
+		prefix = "dm"
+	case MessageType_ANNOUNCEMENT:
+		prefix = "announcement"
+	}
+	id := fmt.Sprintf("%s/%s", prefix, uuid.NewString())
+	return db.addNewEntry(TypeMessageEntry, id, m)
 }
 
 func (db *Database) RenameUser(id, newUsername string) error {
@@ -294,31 +304,33 @@ func (m MessageEntries) Swap(i, j int) {
 	m[i], m[j] = m[j], m[i]
 }
 
-func (db *Database) GetRecentMessagesForUserAndRoom(uid, room string) (MessageEntries, error) {
+func (db *Database) GetRecentMessagesForRoom(room string, skipAnnouncements bool) (MessageEntries, error) {
 	res := make(MessageEntries, 0)
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
-		prefix := getKeyWithPrefix(TypeMessageEntry)
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			if item.UserMeta() != TypeMessageEntry {
-				continue
+		prefixes := [][]byte{getKeyWithPrefix(TypeMessageEntry, "room", room)}
+		if !skipAnnouncements {
+			prefixes = append(prefixes, getKeyWithPrefix(TypeMessageEntry, "announcement"))
+		}
+		for _, prefix := range prefixes {
+			for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+				item := it.Item()
+				if item.UserMeta() != TypeMessageEntry {
+					continue
+				}
+				var tmp MessageEntry
+				err := it.Item().Value(func(val []byte) error {
+					return proto.Unmarshal(val, &tmp)
+				})
+				if err != nil {
+					return err
+				}
+				if (tmp.Type == MessageType_ROOM_ANNOUNCEMENT || tmp.Type == MessageType_PUBLIC) && tmp.Room != room {
+					continue
+				}
+				res = append(res, &tmp)
 			}
-			var tmp MessageEntry
-			err := it.Item().Value(func(val []byte) error {
-				return proto.Unmarshal(val, &tmp)
-			})
-			if err != nil {
-				return err
-			}
-			if tmp.Type == MessageType_DIRECT && tmp.To != uid && tmp.From != uid {
-				continue
-			}
-			if (tmp.Type == MessageType_ROOM_ANNOUNCEMENT || tmp.Type == MessageType_PUBLIC) && tmp.Room != room {
-				continue
-			}
-			res = append(res, &tmp)
 		}
 		return nil
 	})
@@ -334,7 +346,7 @@ func (db *Database) GetRecentDirectMessagesForUser(selfId, uid string) (MessageE
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
-		prefix := getKeyWithPrefix(TypeMessageEntry)
+		prefix := getKeyWithPrefix(TypeMessageEntry, "dm")
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			if item.UserMeta() != TypeMessageEntry {
@@ -396,7 +408,7 @@ func (db *Database) DumpDirectMessages(username string, emit func(*MessageEntry)
 	err = db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
-		prefix := getKeyWithPrefix(TypeMessageEntry)
+		prefix := getKeyWithPrefix(TypeMessageEntry, "dm")
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			if item.UserMeta() != TypeMessageEntry {
