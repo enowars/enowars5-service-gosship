@@ -476,7 +476,7 @@ func (h *Host) ServerInfo() string {
 }
 
 func (h *Host) ListUsersForUser(from *User) error {
-	dbUsers, err := h.Database.DumpUsers()
+	dbUsers, err := h.Database.GetAllUsers()
 	if err != nil {
 		return err
 	}

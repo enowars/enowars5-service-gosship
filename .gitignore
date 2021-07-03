@@ -9,3 +9,4 @@ checker/checker-test
 checker/session-exploit
 checker/private-room-exploit
 checker/load-test
+checker/dump-db

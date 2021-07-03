@@ -454,7 +454,7 @@ func (m UserEntries) Swap(i, j int) {
 	m[i], m[j] = m[j], m[i]
 }
 
-func (db *Database) DumpUsers() (UserEntries, error) {
+func (db *Database) GetAllUsers() (UserEntries, error) {
 	res := make(UserEntries, 0)
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
@@ -481,47 +481,6 @@ func (db *Database) DumpUsers() (UserEntries, error) {
 	}
 	sort.Sort(res)
 	return res, err
-}
-
-func (db *Database) DumpToLog() {
-	err := db.db.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-		for it.Rewind(); it.Valid(); it.Next() {
-			item := it.Item()
-			key := string(item.Key())
-			val, err := item.ValueCopy(nil)
-			if err != nil {
-				return err
-			}
-			switch item.UserMeta() {
-			case TypeIndexEntry:
-				db.log.Infof("IDX(%s): %s", key, string(val))
-			case TypeUserEntry:
-				var tmp UserEntry
-				_ = proto.Unmarshal(val, &tmp)
-				db.log.Infof("USR(%s): %s", key, tmp.String())
-			case TypeMessageEntry:
-				var tmp MessageEntry
-				_ = proto.Unmarshal(val, &tmp)
-				db.log.Infof("MSG(%s): %s", key, tmp.String())
-			case TypeRoomConfigEntry:
-				var tmp RoomConfigEntry
-				_ = proto.Unmarshal(val, &tmp)
-				db.log.Infof("CFG(%s): %s", key, tmp.String())
-			case TypeConfigEntry:
-				var tmp ConfigEntry
-				_ = proto.Unmarshal(val, &tmp)
-				db.log.Infof("CFG(%s): %s", key, tmp.String())
-			default:
-				db.log.Warnf("unknown key: %s", key)
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		db.log.Error(err)
-	}
 }
 
 func (db *Database) runGC() {
