@@ -5,8 +5,11 @@ services:
     restart: always
     volumes:
       - db-data:/app/db
+    environment:
+      - ENABLE_DEBUG_ENDPOINT=1
     ports:
       - "2222:2222"
+      - "6060:6060"
 
 volumes:
   db-data:

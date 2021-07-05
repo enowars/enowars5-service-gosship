@@ -7,9 +7,10 @@ import (
 	"gosship/pkg/logger"
 	"gosship/pkg/rpc"
 	"gosship/pkg/utils"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"runtime"
 	"syscall"
 	"time"
 
@@ -19,6 +20,12 @@ import (
 )
 
 func run(log *logrus.Logger) error {
+	if os.Getenv("ENABLE_DEBUG_ENDPOINT") == "1" {
+		go func() {
+			log.Warn(http.ListenAndServe(":6060", nil))
+		}()
+	}
+
 	log.Println("starting...")
 	log.Println("opening database...")
 	db, err := database.NewDatabase(log)
@@ -103,7 +110,6 @@ func run(log *logrus.Logger) error {
 }
 
 func main() {
-	runtime.GOMAXPROCS(128)
 	log := logger.New(logrus.InfoLevel)
 	if err := run(log); err != nil {
 		log.Fatal(err)
