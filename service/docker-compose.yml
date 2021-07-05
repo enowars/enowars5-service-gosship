@@ -2,6 +2,7 @@ version: '3'
 services:
   gosship:
     build: .
+    restart: always
     volumes:
       - db-data:/app/db
     ports:
