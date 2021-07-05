@@ -7,8 +7,6 @@ import (
 	"gosship/pkg/logger"
 	"gosship/pkg/rpc"
 	"gosship/pkg/utils"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,12 +18,6 @@ import (
 )
 
 func run(log *logrus.Logger) error {
-	if os.Getenv("ENABLE_DEBUG_ENDPOINT") == "1" {
-		go func() {
-			log.Warn(http.ListenAndServe(":6060", nil))
-		}()
-	}
-
 	log.Println("starting...")
 	log.Println("opening database...")
 	db, err := database.NewDatabase(log)

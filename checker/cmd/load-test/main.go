@@ -71,10 +71,10 @@ func createHavocPayload() io.Reader {
 }
 
 func sendRequest(group, cnt int, client *http.Client) error {
-	variant := uint64(cnt % 2)
+	variant := uint64(group % 2)
 	var payload io.Reader
 	var pType string
-	switch group % 3 {
+	switch cnt % 3 {
 	case 0:
 		pType = "F"
 		payload = createPutFlagPayload(variant)
@@ -131,7 +131,7 @@ func run() error {
 		Timeout: Timeout * time.Millisecond,
 	}
 	var wg sync.WaitGroup
-	for i := 0; i < 99; i++ {
+	for i := 0; i < 50; i++ {
 		wg.Add(1)
 		go func(group int) {
 			send1000Requests(group, client)
