@@ -15,7 +15,7 @@ const (
 	TypeConfigEntry byte = iota
 	TypeUserEntry
 	TypeMessageEntry
-	TypeRoomConfigEntry
+	TypeRoomEntry
 	TypeIndexEntry
 )
 
@@ -58,13 +58,13 @@ func run(dbPath string) error {
 					return fmt.Errorf("could not unmarshal %s: %w", key, err)
 				}
 				log.Infof("MSG(%s): %s", key, tmp.String())
-			case TypeRoomConfigEntry:
-				var tmp database.RoomConfigEntry
+			case TypeRoomEntry:
+				var tmp database.RoomEntry
 				err = proto.Unmarshal(val, &tmp)
 				if err != nil {
 					return fmt.Errorf("could not unmarshal %s: %w", key, err)
 				}
-				log.Infof("CFG(%s): %s", key, tmp.String())
+				log.Infof("ROM(%s): %s", key, tmp.String())
 			case TypeConfigEntry:
 				var tmp database.ConfigEntry
 				err = proto.Unmarshal(val, &tmp)
