@@ -200,7 +200,9 @@ func (db *Database) GetAllRooms(namesOnly bool) (map[string]*RoomEntry, error) {
 	res := make(map[string]*RoomEntry)
 	res["default"] = DefaultRoom
 	err := db.db.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = !namesOnly
+		it := txn.NewIterator(opts)
 		defer it.Close()
 		prefix := getKeyWithPrefix(TypeRoomEntry)
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
