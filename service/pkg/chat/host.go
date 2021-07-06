@@ -404,7 +404,7 @@ func (h *Host) CheckRoomPassword(room, password string) error {
 	r, err := h.Database.GetRoom(room)
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return fmt.Errorf("room %s does not exist: %w", room, err)
+			return fmt.Errorf("room %s does not exist", room)
 		}
 		return err
 	}
