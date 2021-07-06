@@ -233,7 +233,7 @@ func (db *Database) GetAllRooms(namesOnly bool) (map[string]*RoomEntry, error) {
 }
 
 func (db *Database) AddOrUpdateUser(id string, u *UserEntry) error {
-	db.log.Printf("adding/updating user with id: %s", id)
+	db.log.Debugf("adding/updating user with id: %s", id)
 	return db.addNewEntry(TypeUserEntry, id, u)
 }
 
