@@ -25,21 +25,20 @@ const (
 	TypeConfigEntry byte = iota
 	TypeUserEntry
 	TypeMessageEntry
-	TypeRoomConfigEntry
+	TypeRoomEntry
 	TypeIndexEntry
 )
 
 const (
-	configEntryKey     = "server-config"
-	roomConfigEntryKey = "room-config"
+	configEntryKey = "server-config"
 )
 
 var entryToPrefix = map[byte]string{
-	TypeConfigEntry:     "config",
-	TypeUserEntry:       "user",
-	TypeMessageEntry:    "message",
-	TypeRoomConfigEntry: "config",
-	TypeIndexEntry:      "index",
+	TypeConfigEntry:  "config",
+	TypeUserEntry:    "user",
+	TypeMessageEntry: "message",
+	TypeRoomEntry:    "room",
+	TypeIndexEntry:   "index",
 }
 
 type Index string
@@ -49,6 +48,8 @@ const (
 	IndexUserFingerprint   = Index("user/fingerprint")
 	IndexDirectMessageUser = Index("dm/user")
 )
+
+var DefaultRoom = &RoomEntry{}
 
 func getKeyWithPrefix(meta byte, keyParts ...string) []byte {
 	return []byte(fmt.Sprintf("%s/%s", entryToPrefix[meta], strings.Join(keyParts, "/")))
@@ -118,6 +119,9 @@ func createNewEntries(meta byte, id string, msg proto.Message) ([]*badger.Entry,
 		entries = append(entries,
 			createIndexEntry(IndexUserName, u.Name, ttl, entry.Key),
 			createIndexEntry(IndexUserFingerprint, u.Fingerprint, ttl, entry.Key))
+	case TypeRoomEntry:
+		// rooms expire after 1 hour
+		entry.WithTTL(1 * time.Hour)
 	}
 	return entries, nil
 }
@@ -165,34 +169,65 @@ func (db *Database) SetConfig(ce *ConfigEntry) error {
 	return db.addNewEntry(TypeConfigEntry, configEntryKey, ce)
 }
 
-func (db *Database) GetRoomConfig() (*RoomConfigEntry, error) {
-	db.log.Println("getting room config...")
-	var rce RoomConfigEntry
+func (db *Database) GetRoom(room string) (*RoomEntry, error) {
+	if room == "default" {
+		return DefaultRoom, nil
+	}
+	var re RoomEntry
 	err := db.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(getKeyWithPrefix(TypeRoomConfigEntry, roomConfigEntryKey))
+		item, err := txn.Get(getKeyWithPrefix(TypeRoomEntry, room))
 		if err != nil {
 			return err
 		}
-		if item.UserMeta() != TypeRoomConfigEntry {
-			return fmt.Errorf("invalid config entry type")
+		if item.UserMeta() != TypeRoomEntry {
+			return fmt.Errorf("invalid room entry type")
 		}
 		return item.Value(func(val []byte) error {
-			return proto.Unmarshal(val, &rce)
+			return proto.Unmarshal(val, &re)
 		})
 	})
 	if err != nil {
 		return nil, err
 	}
-	return &rce, nil
+	return &re, nil
 }
 
-func (db *Database) SetRoomConfig(rce *RoomConfigEntry) error {
-	db.log.Println("updating room config...")
-	return db.addNewEntry(TypeRoomConfigEntry, roomConfigEntryKey, rce)
+func (db *Database) AddRoom(room string, re *RoomEntry) error {
+	return db.addNewEntry(TypeRoomEntry, room, re)
 }
 
-func (db *Database) UpdateRooms(rooms map[string]*RoomEntry) error {
-	return db.SetRoomConfig(&RoomConfigEntry{Rooms: rooms})
+func (db *Database) GetAllRooms(namesOnly bool) (map[string]*RoomEntry, error) {
+	res := make(map[string]*RoomEntry)
+	res["default"] = DefaultRoom
+	err := db.db.View(func(txn *badger.Txn) error {
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+		prefix := getKeyWithPrefix(TypeRoomEntry)
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			if item.UserMeta() != TypeRoomEntry {
+				continue
+			}
+			roomName := stripKeyPrefix(TypeRoomEntry, item.Key())
+			if namesOnly {
+				res[roomName] = nil
+				continue
+			}
+			var tmp RoomEntry
+			err := it.Item().Value(func(val []byte) error {
+				return proto.Unmarshal(val, &tmp)
+			})
+			if err != nil {
+				return err
+			}
+			res[roomName] = &tmp
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res, err
 }
 
 func (db *Database) AddOrUpdateUser(id string, u *UserEntry) error {

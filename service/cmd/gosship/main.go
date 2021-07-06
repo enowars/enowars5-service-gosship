@@ -37,13 +37,8 @@ func run(log *logrus.Logger) error {
 	log.Printf("loaded key with fingerprint: %s", gossh.FingerprintSHA256(signer.PublicKey()))
 
 	log.Println("setting up host...")
-	roomConfig, err := utils.GetRoomConfig(db)
-	if err != nil {
-		return err
-	}
-	h := chat.NewHost(log, db, roomConfig.Rooms)
+	h := chat.NewHost(log, db)
 	go h.Serve()
-	go h.Cleanup()
 
 	log.Println("starting grpc server...")
 	rpcServer := rpc.NewGRPCServer(log, db, h, signer)
@@ -78,7 +73,6 @@ func run(log *logrus.Logger) error {
 	stop()
 
 	log.Println("stopping server...")
-	h.StopCleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

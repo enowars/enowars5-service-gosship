@@ -9,11 +9,6 @@ message ConfigEntry {
 
 message RoomEntry {
   string Password = 1;
-  google.protobuf.Timestamp Timestamp = 2;
-}
-
-message RoomConfigEntry {
-  map<string, RoomEntry> Rooms = 1;
 }
 
 message UserEntry {
@@ -30,7 +25,7 @@ enum MessageType {
   ANNOUNCEMENT = 4;
 }
 
-message MessageEntry{
+message MessageEntry {
   MessageType Type = 1;
   google.protobuf.Timestamp Timestamp = 2;
   string Body = 3;

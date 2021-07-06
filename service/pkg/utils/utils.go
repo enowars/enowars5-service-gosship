@@ -28,26 +28,3 @@ func GetHostSigner(db *database.Database) (gossh.Signer, error) {
 	}
 	return gossh.NewSignerFromSigner(privateKey)
 }
-
-func GetRoomConfig(db *database.Database) (*database.RoomConfigEntry, error) {
-	config, err := db.GetRoomConfig()
-	if err != nil && err != badger.ErrKeyNotFound {
-		return nil, err
-	}
-	if err != badger.ErrKeyNotFound {
-		return config, nil
-	}
-
-	defaultRoom := &database.RoomEntry{
-		Password:  "",
-		Timestamp: nil,
-	}
-	config = &database.RoomConfigEntry{Rooms: map[string]*database.RoomEntry{
-		"default": defaultRoom,
-	}}
-	err = db.SetRoomConfig(config)
-	if err != nil {
-		return nil, err
-	}
-	return config, nil
-}
