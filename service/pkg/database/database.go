@@ -39,13 +39,15 @@ var entryToPrefix = map[byte]string{
 	TypeUserEntry:       "user",
 	TypeMessageEntry:    "message",
 	TypeRoomConfigEntry: "config",
+	TypeIndexEntry:      "index",
 }
 
 type Index string
 
 const (
-	IndexUserName        = Index("user/name")
-	IndexUserFingerprint = Index("user/fingerprint")
+	IndexUserName          = Index("user/name")
+	IndexUserFingerprint   = Index("user/fingerprint")
+	IndexDirectMessageUser = Index("dm/user")
 )
 
 func getKeyWithPrefix(meta byte, keyParts ...string) []byte {
@@ -57,7 +59,7 @@ func stripKeyPrefix(meta byte, key []byte) string {
 }
 
 func getIndexKey(index Index, key string) []byte {
-	return []byte(fmt.Sprintf("index/%s/%s", index, key))
+	return getKeyWithPrefix(TypeIndexEntry, string(index), key)
 }
 
 type Database struct {
@@ -100,7 +102,14 @@ func createNewEntries(meta byte, id string, msg proto.Message) ([]*badger.Entry,
 	switch meta {
 	case TypeMessageEntry:
 		// messages expire after 30 minutes
-		entry.WithTTL(30 * time.Minute)
+		ttl := 30 * time.Minute
+		entry.WithTTL(ttl)
+		m := msg.(*MessageEntry)
+		if m.Type == MessageType_DIRECT {
+			entries = append(entries,
+				createIndexEntry(IndexDirectMessageUser, m.From+"/"+id[3:], ttl, entry.Key),
+				createIndexEntry(IndexDirectMessageUser, m.To+"/"+id[3:], ttl, entry.Key))
+		}
 	case TypeUserEntry:
 		// users expire after 1 hour after the last login
 		ttl := 1 * time.Hour
@@ -346,21 +355,30 @@ func (db *Database) GetRecentDirectMessagesForUser(selfId, uid string) (MessageE
 	err := db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
-		prefix := getKeyWithPrefix(TypeMessageEntry, "dm")
+		prefix := getIndexKey(IndexDirectMessageUser, selfId)
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			if item.UserMeta() != TypeMessageEntry {
+			indexItem := it.Item()
+			messageKey, err := indexItem.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			messageItem, err := txn.Get(messageKey)
+			if err != nil {
+				if err == badger.ErrKeyNotFound {
+					// index pointed to expired message, let's ignore it
+					continue
+				}
+				return err
+			}
+			if messageItem.UserMeta() != TypeMessageEntry {
 				continue
 			}
 			var tmp MessageEntry
-			err := it.Item().Value(func(val []byte) error {
+			err = messageItem.Value(func(val []byte) error {
 				return proto.Unmarshal(val, &tmp)
 			})
 			if err != nil {
 				return err
-			}
-			if tmp.Type != MessageType_DIRECT {
-				continue
 			}
 			if (tmp.To == selfId && tmp.From == uid) || (tmp.From == selfId && tmp.To == uid) {
 				res = append(res, &tmp)
@@ -408,23 +426,28 @@ func (db *Database) DumpDirectMessages(username string, emit func(*MessageEntry)
 	err = db.db.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
-		prefix := getKeyWithPrefix(TypeMessageEntry, "dm")
+		prefix := getIndexKey(IndexDirectMessageUser, id)
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			if item.UserMeta() != TypeMessageEntry {
+			indexItem := it.Item()
+			messageKey, err := indexItem.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			messageItem, err := txn.Get(messageKey)
+			if err != nil {
+				if err == badger.ErrKeyNotFound {
+					// index pointed to expired message, let's ignore it
+					continue
+				}
+				return err
+			}
+			if messageItem.UserMeta() != TypeMessageEntry {
 				continue
 			}
-			err := item.Value(func(val []byte) error {
+			err = messageItem.Value(func(val []byte) error {
 				var me MessageEntry
-				err := proto.Unmarshal(val, &me)
-				if err != nil {
+				if err := proto.Unmarshal(val, &me); err != nil {
 					return err
-				}
-				if me.Type != MessageType_DIRECT {
-					return nil
-				}
-				if me.To != id && me.From != id {
-					return nil
 				}
 				return emit(&me)
 			})
