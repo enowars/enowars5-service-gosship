@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dgraph-io/badger/v3"
 	"github.com/gliderlabs/ssh"
 	"github.com/kyokomi/emoji/v2"
 	"github.com/logrusorgru/aurora/v3"
@@ -18,14 +19,11 @@ import (
 const title = "              _____ _____ _    _ _       \n             / ____/ ____| |  | (_)      \n   __ _  ___| (___| (___ | |__| |_ _ __  \n  / _` |/ _ \\\\___ \\\\___ \\|  __  | | '_ \\ \n | (_| | (_) |___) |___) | |  | | | |_) |\n  \\__, |\\___/_____/_____/|_|  |_|_| .__/ \n   __/ |                          | |    \n  |___/                           |_|    "
 
 type Host struct {
-	Log               *logrus.Logger
-	usersMu           sync.RWMutex
-	users             map[string]*User
-	msgChan           chan Message
-	Database          *database.Database
-	roomsMu           sync.RWMutex
-	Rooms             map[string]*database.RoomEntry
-	cleanupTickerStop chan struct{}
+	Log      *logrus.Logger
+	usersMu  sync.RWMutex
+	users    map[string]*User
+	msgChan  chan Message
+	Database *database.Database
 
 	DisableUserAnnouncements   bool // hide user joined/left messages
 	DisableRoomAnnouncements   bool // hide rename, user joined/left and admin rpc messages
@@ -98,7 +96,7 @@ func (h *Host) handleNewSessionWithError(session ssh.Session) error {
 	}
 	defer h.RemoveUser(u.Name)
 
-	if !h.HasRoom(u.CurrentRoom) {
+	if u.CurrentRoom != "default" && !h.HasRoom(u.CurrentRoom) {
 		if err := u.UpdateCurrentRoom("default"); err != nil {
 			return err
 		}
@@ -375,9 +373,12 @@ func (h *Host) RouteMessage(msg Message) {
 }
 
 func (h *Host) HasRoom(room string) bool {
-	h.roomsMu.RLock()
-	defer h.roomsMu.RUnlock()
-	for roomName := range h.Rooms {
+	rooms, err := h.Database.GetAllRooms(true)
+	if err != nil {
+		h.Log.Error(err)
+		return false
+	}
+	for roomName := range rooms {
 		if strings.EqualFold(roomName, room) {
 			return true
 		}
@@ -386,65 +387,31 @@ func (h *Host) HasRoom(room string) bool {
 }
 
 func (h *Host) CreateRoom(room, password string) error {
-	h.roomsMu.Lock()
-	defer h.roomsMu.Unlock()
-	_, ok := h.Rooms[room]
-	if ok {
+	_, err := h.Database.GetRoom(room)
+	if err == nil {
 		return fmt.Errorf("room %s already exist", room)
 	}
-	h.Rooms[room] = &database.RoomEntry{
-		Password:  password,
-		Timestamp: timestamppb.New(time.Now()),
+	if err != badger.ErrKeyNotFound {
+		return err
 	}
-	return h.Database.UpdateRooms(h.Rooms)
+
+	return h.Database.AddRoom(room, &database.RoomEntry{
+		Password: password,
+	})
 }
 
 func (h *Host) CheckRoomPassword(room, password string) error {
-	h.roomsMu.RLock()
-	defer h.roomsMu.RUnlock()
-	_, ok := h.Rooms[room]
-	if !ok {
-		return fmt.Errorf("room %s does not exist", room)
+	r, err := h.Database.GetRoom(room)
+	if err != nil {
+		if err == badger.ErrKeyNotFound {
+			return fmt.Errorf("room %s does not exist: %w", room, err)
+		}
+		return err
 	}
-	if h.Rooms[room].Password != password {
+	if r.Password != password {
 		return fmt.Errorf("invalid password")
 	}
 	return nil
-}
-
-func (h *Host) resetRoomForConnectedUsers(room string) {
-	h.usersMu.RLock()
-	defer h.usersMu.RUnlock()
-	for _, u := range h.users {
-		if u.CurrentRoom != room {
-			continue
-		}
-
-		if err := u.UpdateCurrentRoom("default"); err != nil {
-			h.Log.Error(err)
-			continue
-		}
-		_ = u.WriteLine(aurora.Sprintf("you are now in room %s.", aurora.Blue("default")))
-	}
-}
-
-func (h *Host) cleanupRooms() error {
-	h.roomsMu.Lock()
-	defer h.roomsMu.Unlock()
-	pastMarker := time.Now().Add(-1 * time.Hour)
-	update := false
-	for roomName, roomEntry := range h.Rooms {
-		if roomEntry.Timestamp != nil && roomEntry.Timestamp.AsTime().Before(pastMarker) {
-			h.Log.Infof("removing room %s", roomName)
-			h.resetRoomForConnectedUsers(roomName)
-			delete(h.Rooms, roomName)
-			update = true
-		}
-	}
-	if !update {
-		return nil
-	}
-	return h.Database.UpdateRooms(h.Rooms)
 }
 
 func (h *Host) JoinRoomAnnouncement(u *User) {
@@ -523,9 +490,11 @@ func (h *Host) ShowRecentMessages(u *User, skipGlobalAnnouncements, skipRoomAnno
 }
 
 func (h *Host) ListRoomsForUser(from *User) error {
-	h.roomsMu.RLock()
-	defer h.roomsMu.RUnlock()
-	for room, roomEntry := range h.Rooms {
+	rooms, err := h.Database.GetAllRooms(false)
+	if err != nil {
+		return err
+	}
+	for room, roomEntry := range rooms {
 		roomEmoji := ":speaking_head:"
 		if roomEntry.Password != "" {
 			roomEmoji = ":closed_lock_with_key:"
@@ -542,39 +511,15 @@ func (h *Host) ListRoomsForUser(from *User) error {
 	return nil
 }
 
-func (h *Host) Cleanup() {
-	ticker := time.NewTicker(2 * time.Minute)
-	defer ticker.Stop()
-	h.Log.Info("cleanup started...")
-	for {
-		select {
-		case <-ticker.C:
-			err := h.cleanupRooms()
-			if err != nil {
-				h.Log.Error(err)
-			}
-		case <-h.cleanupTickerStop:
-			h.Log.Info("cleanup stopped")
-			return
-		}
-	}
-}
-
-func (h *Host) StopCleanup() {
-	h.cleanupTickerStop <- struct{}{}
-}
-
-func NewHost(log *logrus.Logger, db *database.Database, rooms map[string]*database.RoomEntry) *Host {
+func NewHost(log *logrus.Logger, db *database.Database) *Host {
 	return &Host{
 		Log:                        log,
 		users:                      make(map[string]*User),
 		msgChan:                    make(chan Message, 4096),
 		Database:                   db,
-		Rooms:                      rooms,
 		DisableUserAnnouncements:   true,
 		DisableRoomAnnouncements:   false,
 		DisableServerAnnouncements: true,
 		DisableAnnouncementsOnJoin: true,
-		cleanupTickerStop:          make(chan struct{}, 1),
 	}
 }
