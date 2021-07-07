@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"checker/pkg/checker"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -12,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/enowars/enochecker-go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -32,8 +32,8 @@ func randomString() string {
 
 const Timeout = 15000
 
-func createTaskMessage(method checker.TaskMessageMethod) checker.TaskMessage {
-	return checker.TaskMessage{
+func createTaskMessage(method enochecker.TaskMessageMethod) enochecker.TaskMessage {
+	return enochecker.TaskMessage{
 		Method:      method,
 		Address:     "127.0.0.1",
 		TeamName:    "team",
@@ -45,7 +45,7 @@ func createTaskMessage(method checker.TaskMessageMethod) checker.TaskMessage {
 }
 
 func createPutFlagPayload(variant uint64) io.Reader {
-	taskMessage := createTaskMessage(checker.TaskMessageMethodPutFlag)
+	taskMessage := createTaskMessage(enochecker.TaskMessageMethodPutFlag)
 	taskMessage.VariantId = variant
 	rawPayload, err := json.Marshal(taskMessage)
 	if err != nil {
@@ -55,7 +55,7 @@ func createPutFlagPayload(variant uint64) io.Reader {
 }
 
 func createPutNoisePayload() io.Reader {
-	rawPayload, err := json.Marshal(createTaskMessage(checker.TaskMessageMethodPutNoise))
+	rawPayload, err := json.Marshal(createTaskMessage(enochecker.TaskMessageMethodPutNoise))
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +63,7 @@ func createPutNoisePayload() io.Reader {
 }
 
 func createHavocPayload() io.Reader {
-	rawPayload, err := json.Marshal(createTaskMessage(checker.TaskMessageMethodHavoc))
+	rawPayload, err := json.Marshal(createTaskMessage(enochecker.TaskMessageMethodHavoc))
 	if err != nil {
 		panic(err)
 	}
@@ -100,13 +100,13 @@ func sendRequest(group, cnt int, client *http.Client) error {
 		return err
 	}
 
-	var checkerRes checker.ResultMessage
+	var checkerRes enochecker.ResultMessage
 	if err := json.NewDecoder(res.Body).Decode(&checkerRes); err != nil {
 		return err
 	}
 
 	log.Printf("%s done(%dms): %s", logPrefix, time.Since(start).Milliseconds(), checkerRes.Result)
-	if checkerRes.Result != checker.ResultOk {
+	if checkerRes.Result != enochecker.ResultOk {
 		log.Errorf("%s %s", logPrefix, *checkerRes.Message)
 	}
 
