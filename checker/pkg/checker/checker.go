@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/sirupsen/logrus"
 )
 
 //go:embed post.html
@@ -59,14 +58,26 @@ var ErrFlagNotFound = NewMumbleError(errors.New("flag not found"))
 var ErrNoiseNotFound = NewMumbleError(errors.New("flag not found"))
 var ErrVariantIdOutOfRange = errors.New("variantId out of range")
 
+// Logger is a typical logger interface
+type Logger interface {
+	Debugf(format string, args ...interface{})
+	Infof(format string, args ...interface{})
+	Warnf(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
+	Debug(args ...interface{})
+	Info(args ...interface{})
+	Warn(args ...interface{})
+	Error(args ...interface{})
+}
+
 type Checker struct {
-	log     *logrus.Logger
+	log     Logger
 	router  *httprouter.Router
 	info    *InfoMessage
 	handler Handler
 }
 
-func NewChecker(log *logrus.Logger, handler Handler) *Checker {
+func NewChecker(log Logger, handler Handler) *Checker {
 	c := &Checker{
 		log:     log,
 		router:  httprouter.New(),
@@ -85,7 +96,7 @@ func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *h
 	}
 
 	startTs := time.Now()
-	c.log.Printf("[%s] %s - %s", tm.TaskChainId, tm.Method, tm.TeamName)
+	c.log.Infof("[%s] %s - %s", tm.TaskChainId, tm.Method, tm.TeamName)
 
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	// reduce timeout by 1000ms so we have enough time to close all connections
@@ -113,7 +124,7 @@ func (c *Checker) checkerWithErrorHandler(writer http.ResponseWriter, request *h
 		}
 	}
 
-	c.log.Printf("[%s] %s - done [%dms]", tm.TaskChainId, tm.Method, time.Since(startTs).Milliseconds())
+	c.log.Infof("[%s] %s - done [%dms]", tm.TaskChainId, tm.Method, time.Since(startTs).Milliseconds())
 	if err := json.NewEncoder(writer).Encode(res); err != nil {
 		c.log.Error(err)
 	}
@@ -126,7 +137,7 @@ func (c *Checker) setupRoutes() {
 }
 
 func (c *Checker) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	c.log.Printf("%s - %s %s", request.RemoteAddr, request.Method, request.URL.EscapedPath())
+	c.log.Infof("%s - %s %s", request.RemoteAddr, request.Method, request.URL.EscapedPath())
 	c.router.ServeHTTP(writer, request)
 }
 
