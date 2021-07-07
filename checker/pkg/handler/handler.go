@@ -2,7 +2,6 @@ package handler
 
 import (
 	"bufio"
-	"checker/pkg/checker"
 	"checker/pkg/client"
 	"checker/pkg/database"
 	"checker/pkg/quotes"
@@ -16,11 +15,12 @@ import (
 
 	"github.com/acarl005/stripansi"
 	"github.com/dgraph-io/badger/v3"
+	"github.com/enowars/enochecker-go"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/ssh"
 )
 
-var serviceInfo = &checker.InfoMessage{
+var serviceInfo = &enochecker.InfoMessage{
 	ServiceName:     "gosship",
 	FlagVariants:    2,
 	NoiseVariants:   1,
@@ -72,7 +72,7 @@ func (h *Handler) validatePublicKey(pubKey ssh.PublicKey, teamId uint64) error {
 		if h.pubKeyMismatches[teamId] < 12 {
 			h.log.Warnf("public key missmatch (teamId=%d): %d", teamId, h.pubKeyMismatches[teamId])
 			h.pubKeyMismatches[teamId]++
-			return checker.NewMumbleError(ErrSSHKeyMismatch)
+			return enochecker.NewMumbleError(ErrSSHKeyMismatch)
 		}
 		// reset mismatch count and update pub key
 		h.pubKeyMismatches[teamId] = 0
@@ -177,7 +177,7 @@ func (h *Handler) sendPrivateRoomMessage(ctx context.Context, teamId uint64, use
 	return h.sendMessageAndCheckResponse(ctx, sessionIO, "/j", "you are now in room default.")
 }
 
-func (h *Handler) putFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) (*checker.HandlerInfo, error) {
+func (h *Handler) putFlagDirectMessage(ctx context.Context, message *enochecker.TaskMessage) (*enochecker.HandlerInfo, error) {
 	userA, err := client.GenerateNewUser()
 	if err != nil {
 		return nil, err
@@ -204,10 +204,10 @@ func (h *Handler) putFlagDirectMessage(ctx context.Context, message *checker.Tas
 		return nil, err
 	}
 
-	return checker.NewPutFlagInfo(userA.Name), nil
+	return enochecker.NewPutFlagInfo(userA.Name), nil
 }
 
-func (h *Handler) putFlagPrivateRoom(ctx context.Context, message *checker.TaskMessage) (*checker.HandlerInfo, error) {
+func (h *Handler) putFlagPrivateRoom(ctx context.Context, message *enochecker.TaskMessage) (*enochecker.HandlerInfo, error) {
 	userA, err := client.GenerateNewUser()
 	if err != nil {
 		return nil, err
@@ -232,10 +232,10 @@ func (h *Handler) putFlagPrivateRoom(ctx context.Context, message *checker.TaskM
 		return nil, err
 	}
 
-	return checker.NewPutFlagInfo(room), nil
+	return enochecker.NewPutFlagInfo(room), nil
 }
 
-func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) (*checker.HandlerInfo, error) {
+func (h *Handler) PutFlag(ctx context.Context, message *enochecker.TaskMessage) (*enochecker.HandlerInfo, error) {
 	switch message.VariantId {
 	case 0:
 		return h.putFlagDirectMessage(ctx, message)
@@ -246,11 +246,11 @@ func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) (*c
 	return nil, ErrVariantNotFound
 }
 
-func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.TaskMessage) error {
+func (h *Handler) getFlagDirectMessage(ctx context.Context, message *enochecker.TaskMessage) error {
 	fi, err := h.db.GetTaskChainEntry(message.TaskChainId)
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return checker.ErrFlagNotFound
+			return enochecker.ErrFlagNotFound
 		}
 		return err
 	}
@@ -283,17 +283,17 @@ func (h *Handler) getFlagDirectMessage(ctx context.Context, message *checker.Tas
 	}
 
 	if !found {
-		return checker.ErrFlagNotFound
+		return enochecker.ErrFlagNotFound
 	}
 
 	return nil
 }
 
-func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *checker.TaskMessage) error {
+func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *enochecker.TaskMessage) error {
 	fi, err := h.db.GetTaskChainEntry(message.TaskChainId)
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return checker.ErrFlagNotFound
+			return enochecker.ErrFlagNotFound
 		}
 		return err
 	}
@@ -315,13 +315,13 @@ func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *checker.TaskM
 	err = h.sendMessageAndCheckResponse(ctx, sessionIO, joinCmd, message.Flag)
 	if err != nil {
 		h.log.Error(err)
-		return checker.ErrFlagNotFound
+		return enochecker.ErrFlagNotFound
 	}
 
 	return nil
 }
 
-func (h *Handler) GetFlag(ctx context.Context, message *checker.TaskMessage) error {
+func (h *Handler) GetFlag(ctx context.Context, message *enochecker.TaskMessage) error {
 	switch message.VariantId {
 	case 0:
 		return h.getFlagDirectMessage(ctx, message)
@@ -332,7 +332,7 @@ func (h *Handler) GetFlag(ctx context.Context, message *checker.TaskMessage) err
 	return ErrVariantNotFound
 }
 
-func (h *Handler) putNoiseDirectMessage(ctx context.Context, message *checker.TaskMessage) error {
+func (h *Handler) putNoiseDirectMessage(ctx context.Context, message *enochecker.TaskMessage) error {
 	userA, err := client.GenerateNewUser()
 	if err != nil {
 		return err
@@ -365,11 +365,11 @@ func (h *Handler) putNoiseDirectMessage(ctx context.Context, message *checker.Ta
 	return nil
 }
 
-func (h *Handler) getNoiseDirectMessage(ctx context.Context, message *checker.TaskMessage) error {
+func (h *Handler) getNoiseDirectMessage(ctx context.Context, message *enochecker.TaskMessage) error {
 	fi, err := h.db.GetTaskChainEntry(message.TaskChainId)
 	if err != nil {
 		if err == badger.ErrKeyNotFound {
-			return checker.ErrFlagNotFound
+			return enochecker.ErrFlagNotFound
 		}
 		return err
 	}
@@ -391,13 +391,13 @@ func (h *Handler) getNoiseDirectMessage(ctx context.Context, message *checker.Ta
 	err = h.sendMessageAndCheckResponse(ctx, sessionIO, historyCmd, fi.Noise)
 	if err != nil {
 		h.log.Error(err)
-		return checker.ErrNoiseNotFound
+		return enochecker.ErrNoiseNotFound
 	}
 
 	return nil
 }
 
-func (h *Handler) PutNoise(ctx context.Context, message *checker.TaskMessage) error {
+func (h *Handler) PutNoise(ctx context.Context, message *enochecker.TaskMessage) error {
 	switch message.VariantId {
 	case 0:
 		return h.putNoiseDirectMessage(ctx, message)
@@ -406,7 +406,7 @@ func (h *Handler) PutNoise(ctx context.Context, message *checker.TaskMessage) er
 	return ErrVariantNotFound
 }
 
-func (h *Handler) GetNoise(ctx context.Context, message *checker.TaskMessage) error {
+func (h *Handler) GetNoise(ctx context.Context, message *enochecker.TaskMessage) error {
 	switch message.VariantId {
 	case 0:
 		return h.getNoiseDirectMessage(ctx, message)
@@ -415,7 +415,7 @@ func (h *Handler) GetNoise(ctx context.Context, message *checker.TaskMessage) er
 	return ErrVariantNotFound
 }
 
-func (h *Handler) havocRPC(ctx context.Context, message *checker.TaskMessage) error {
+func (h *Handler) havocRPC(ctx context.Context, message *enochecker.TaskMessage) error {
 	userA, err := client.GenerateNewUser()
 	if err != nil {
 		return err
@@ -451,7 +451,7 @@ func (h *Handler) havocRPC(ctx context.Context, message *checker.TaskMessage) er
 	return nil
 }
 
-func (h *Handler) Havoc(ctx context.Context, message *checker.TaskMessage) error {
+func (h *Handler) Havoc(ctx context.Context, message *enochecker.TaskMessage) error {
 	switch message.VariantId {
 	case 0:
 		return h.havocRPC(ctx, message)
@@ -460,24 +460,24 @@ func (h *Handler) Havoc(ctx context.Context, message *checker.TaskMessage) error
 	return ErrVariantNotFound
 }
 
-func (h *Handler) Exploit(ctx context.Context, message *checker.TaskMessage) (*checker.HandlerInfo, error) {
+func (h *Handler) Exploit(ctx context.Context, message *enochecker.TaskMessage) (*enochecker.HandlerInfo, error) {
 	switch message.VariantId {
 	case 0:
 		flag, err := h.hijackAdminSession(ctx, message.AttackInfo, message.Address, message.FlagRegex)
 		if err != nil {
 			return nil, err
 		}
-		return checker.NewExploitInfo(flag), nil
+		return enochecker.NewExploitInfo(flag), nil
 	case 1:
 		flag, err := h.hijackPrivateRoom(ctx, message.AttackInfo, message.Address, message.FlagRegex)
 		if err != nil {
 			return nil, err
 		}
-		return checker.NewExploitInfo(flag), nil
+		return enochecker.NewExploitInfo(flag), nil
 	}
 	return nil, ErrVariantNotFound
 }
 
-func (h *Handler) GetServiceInfo() *checker.InfoMessage {
+func (h *Handler) GetServiceInfo() *enochecker.InfoMessage {
 	return serviceInfo
 }

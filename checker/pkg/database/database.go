@@ -1,7 +1,6 @@
 package database
 
 import (
-	"checker/pkg/checker"
 	"checker/pkg/client"
 	"encoding/json"
 	"fmt"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v3"
+	"github.com/enowars/enochecker-go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -71,15 +71,15 @@ func (db *Database) get(prefix, key string) ([]byte, error) {
 }
 
 type TaskChainEntry struct {
-	Type        string               `json:"type"`
-	Variant     string               `json:"variant"`
-	TaskMessage *checker.TaskMessage `json:"taskMessage"`
-	UserA       *client.User         `json:"userA"`
-	UserB       *client.User         `json:"userB"`
-	Room        string               `json:"room"`
-	Password    string               `json:"password"`
-	Noise       string               `json:"noise"`
-	Timestamp   time.Time            `json:"timestamp"`
+	Type        string                  `json:"type"`
+	Variant     string                  `json:"variant"`
+	TaskMessage *enochecker.TaskMessage `json:"taskMessage"`
+	UserA       *client.User            `json:"userA"`
+	UserB       *client.User            `json:"userB"`
+	Room        string                  `json:"room"`
+	Password    string                  `json:"password"`
+	Noise       string                  `json:"noise"`
+	Timestamp   time.Time               `json:"timestamp"`
 }
 
 func (db *Database) PutTaskChainEntry(fi *TaskChainEntry) error {
