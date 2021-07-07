@@ -1,7 +1,6 @@
 package main
 
 import (
-	"checker/pkg/checker"
 	"checker/pkg/database"
 	"checker/pkg/handler"
 	"context"
@@ -11,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/enowars/enochecker-go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,7 +27,7 @@ func main() {
 	checkerHandler := handler.New(log, db)
 	server := &http.Server{
 		Addr:    ":2002",
-		Handler: checker.NewChecker(log, checkerHandler),
+		Handler: enochecker.NewChecker(log, checkerHandler),
 	}
 	go func() {
 		log.Printf("starting server on port %s...", server.Addr)
