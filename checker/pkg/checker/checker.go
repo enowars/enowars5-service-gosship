@@ -57,6 +57,7 @@ func (m mumbleErrorMsg) Mumble() bool { return true }
 
 var ErrFlagNotFound = NewMumbleError(errors.New("flag not found"))
 var ErrNoiseNotFound = NewMumbleError(errors.New("flag not found"))
+var ErrVariantIdOutOfRange = errors.New("variantId out of range")
 
 type Checker struct {
 	log     *logrus.Logger
@@ -145,7 +146,28 @@ func (c *Checker) service(writer http.ResponseWriter, request *http.Request, _ h
 	}
 }
 
+func (c *Checker) validateVariantId(tm *TaskMessage) error {
+	variants := uint64(0)
+	switch tm.Method {
+	case TaskMessageMethodPutFlag, TaskMessageMethodGetFlag:
+		variants = c.info.FlagVariants
+	case TaskMessageMethodPutNoise, TaskMessageMethodGetNoise:
+		variants = c.info.NoiseVariants
+	case TaskMessageMethodHavoc:
+		variants = c.info.HavocVariants
+	case TaskMessageMethodExploit:
+		variants = c.info.ExploitVariants
+	}
+	if tm.VariantId >= variants {
+		return ErrVariantIdOutOfRange
+	}
+	return nil
+}
+
 func (c *Checker) checker(ctx context.Context, tm *TaskMessage) (*HandlerInfo, error) {
+	if err := c.validateVariantId(tm); err != nil {
+		return nil, err
+	}
 	switch tm.Method {
 	case TaskMessageMethodPutFlag:
 		return c.handler.PutFlag(ctx, tm)

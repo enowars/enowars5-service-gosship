@@ -28,7 +28,6 @@ var serviceInfo = &checker.InfoMessage{
 	ExploitVariants: 2,
 }
 
-var ErrVariantIdOutOfRange = errors.New("variantId out of range")
 var ErrVariantNotFound = errors.New("variant not found")
 var ErrInvalidVariant = errors.New("invalid variant database entry")
 var ErrResponseNotFoundTimeout = errors.New("the response was not received after a certain timeout")
@@ -237,9 +236,6 @@ func (h *Handler) putFlagPrivateRoom(ctx context.Context, message *checker.TaskM
 }
 
 func (h *Handler) PutFlag(ctx context.Context, message *checker.TaskMessage) (*checker.HandlerInfo, error) {
-	if message.VariantId >= serviceInfo.FlagVariants {
-		return nil, ErrVariantIdOutOfRange
-	}
 	switch message.VariantId {
 	case 0:
 		return h.putFlagDirectMessage(ctx, message)
@@ -326,9 +322,6 @@ func (h *Handler) getFlagPrivateRoom(ctx context.Context, message *checker.TaskM
 }
 
 func (h *Handler) GetFlag(ctx context.Context, message *checker.TaskMessage) error {
-	if message.VariantId >= serviceInfo.FlagVariants {
-		return ErrVariantIdOutOfRange
-	}
 	switch message.VariantId {
 	case 0:
 		return h.getFlagDirectMessage(ctx, message)
@@ -405,9 +398,6 @@ func (h *Handler) getNoiseDirectMessage(ctx context.Context, message *checker.Ta
 }
 
 func (h *Handler) PutNoise(ctx context.Context, message *checker.TaskMessage) error {
-	if message.VariantId >= serviceInfo.NoiseVariants {
-		return ErrVariantIdOutOfRange
-	}
 	switch message.VariantId {
 	case 0:
 		return h.putNoiseDirectMessage(ctx, message)
@@ -417,9 +407,6 @@ func (h *Handler) PutNoise(ctx context.Context, message *checker.TaskMessage) er
 }
 
 func (h *Handler) GetNoise(ctx context.Context, message *checker.TaskMessage) error {
-	if message.VariantId >= serviceInfo.NoiseVariants {
-		return ErrVariantIdOutOfRange
-	}
 	switch message.VariantId {
 	case 0:
 		return h.getNoiseDirectMessage(ctx, message)
@@ -429,7 +416,6 @@ func (h *Handler) GetNoise(ctx context.Context, message *checker.TaskMessage) er
 }
 
 func (h *Handler) havocRPC(ctx context.Context, message *checker.TaskMessage) error {
-
 	userA, err := client.GenerateNewUser()
 	if err != nil {
 		return err
@@ -466,9 +452,6 @@ func (h *Handler) havocRPC(ctx context.Context, message *checker.TaskMessage) er
 }
 
 func (h *Handler) Havoc(ctx context.Context, message *checker.TaskMessage) error {
-	if message.VariantId >= serviceInfo.HavocVariants {
-		return ErrVariantIdOutOfRange
-	}
 	switch message.VariantId {
 	case 0:
 		return h.havocRPC(ctx, message)
@@ -478,9 +461,6 @@ func (h *Handler) Havoc(ctx context.Context, message *checker.TaskMessage) error
 }
 
 func (h *Handler) Exploit(ctx context.Context, message *checker.TaskMessage) (*checker.HandlerInfo, error) {
-	if message.VariantId >= serviceInfo.ExploitVariants {
-		return nil, ErrVariantIdOutOfRange
-	}
 	switch message.VariantId {
 	case 0:
 		flag, err := h.hijackAdminSession(ctx, message.AttackInfo, message.Address, message.FlagRegex)
