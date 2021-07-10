@@ -29,8 +29,8 @@ github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 h1:tdlZCpZ/P9DhczC
 github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2/go.mod h1:SqUrOPUnsFjfmXRMNPybcSiG0BgUW2AuFH8PAnS2iTw=
 github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
-github.com/enowars/enochecker-go v1.1.0 h1:mD6+NTfNlOUc9Z/wOEJfJMja8w5EsKJs3Pj+VBW+gKE=
-github.com/enowars/enochecker-go v1.1.0/go.mod h1:JUTJYeyo+LaImY3nHDLckDNCxtcpRf/6RLylGaRro2Q=
+github.com/enowars/enochecker-go v1.2.0 h1:0SLot35DgFbnZ75Q4Hh0RLPJhz0+sT4Eu3+4ipkLGr4=
+github.com/enowars/enochecker-go v1.2.0/go.mod h1:JUTJYeyo+LaImY3nHDLckDNCxtcpRf/6RLylGaRro2Q=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.9-0.20210217033140-668b12f5399d/go.mod h1:cXg6YxExXjJnVBQHBLXeUAgxn2UodCpnH306RInaBQk=

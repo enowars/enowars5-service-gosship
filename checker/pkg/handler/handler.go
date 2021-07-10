@@ -109,7 +109,7 @@ func (h *Handler) sendMessageAndCheckResponse(ctx context.Context, sessIo *clien
 			errCh <- err
 			return
 		}
-		errCh <- ErrCheckStringNotFound
+		errCh <- enochecker.NewOfflineError(ErrCheckStringNotFound)
 	}()
 
 	select {

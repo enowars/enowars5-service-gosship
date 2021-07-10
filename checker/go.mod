@@ -6,7 +6,7 @@ require (
 	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
 	github.com/dgraph-io/badger/v3 v3.2103.0
-	github.com/enowars/enochecker-go v1.1.0
+	github.com/enowars/enochecker-go v1.2.0
 	github.com/sirupsen/logrus v1.8.1
 	golang.org/x/crypto v0.0.0-20210506145944-38f3c27a63bf
 	google.golang.org/grpc v1.37.0
