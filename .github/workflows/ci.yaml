@@ -6,25 +6,19 @@ on:
 
 jobs:
   lint:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
-      - uses: enowars/action-cleanup-runner@v1
       - uses: actions/checkout@v2
       - uses: golangci/golangci-lint-action@v2
         with:
           working-directory: service
-          skip-pkg-cache: true
-          skip-build-cache: true
       - uses: golangci/golangci-lint-action@v2
         with:
           working-directory: checker
-          skip-pkg-cache: true
-          skip-build-cache: true
   test:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: lint
     steps:
-      - uses: enowars/action-cleanup-runner@v1
       - uses: actions/checkout@v2
       - uses: actions/setup-go@v2
         with:
@@ -63,10 +57,9 @@ jobs:
           ENOCHECKER_TEST_CHECKER_ADDRESS: 127.0.0.1
           ENOCHECKER_TEST_CHECKER_PORT: 2002
   release:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: test
     steps:
-      - uses: enowars/action-cleanup-runner@v1
       - uses: actions/checkout@v2
       - uses: go-semantic-release/action@v1
         id: semrel
