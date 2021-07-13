@@ -13,9 +13,9 @@
 
 - [Introduction](#introduction)
 - [Vulnerabilities and Exploits](#vulnerabilities-and-exploits)
-    * [Vulnerability 1 (private rooms)](#vulnerability-1--private-rooms-)
+    * [Vulnerability 1 (private rooms)](#vulnerability-1-private-rooms)
         + [Exploit](#exploit)
-    * [Vulnerability 2 (direct messages)](#vulnerability-2--direct-messages-)
+    * [Vulnerability 2 (direct messages)](#vulnerability-2-direct-messages)
         + [Exploit](#exploit-1)
 - [Lessons Learned](#lessons-learned)
 
