@@ -18,7 +18,7 @@
         + [Fix](#fix)
     * [Vulnerability 2 (direct messages)](#vulnerability-2-direct-messages)
         + [Exploit](#exploit-1)
-- [Lessons Learned](#lessons-learned)
+        + [Fix](#fix-1)
 
 # Introduction
 goSSHip is a SSH chat service written in Go and inspired by the blog post ["Why aren't we using SSH for everything?" by Andrey Petrov](https://shazow.net/posts/ssh-how-does-it-even/).
@@ -77,6 +77,25 @@ To fix this vulnerability the `strings.ToLower` function call needs to be remove
 ````
 
 ## Vulnerability 2 (direct messages)
-### Exploit
+The second flag store is in the direct messages between two users, and the connected vulnerability lies in creating the admin session tokens.
 
-# Lessons Learned
+### Exploit
+To access the flags in the direct messages the `DumpDirectMessages` method from the admin interface is required. That means the attacker needs to get access to the admin interface first.
+In the `GenerateRandomSessionToken` function ([service/pkg/rpc/admin/auth/auth.go](..service/pkg/rpc/admin/auth/auth.go#L36)) a supposedly random 32-byte session token is generated. A race condition in the function when calling the set function will lead to a 32-byte session token where every byte has the same value (this is a common go mistake [https://github.com/golang/go/wiki/CommonMistakes#using-reference-to-loop-iterator-variable](https://github.com/golang/go/wiki/CommonMistakes#using-reference-to-loop-iterator-variable)). Thus, only 256 different session tokens are possible. The attacker easily finds a valid token using brute-forced.
+With access to the admin interface, the attacker invokes the `DumpDirectMessages` method and retrieves the flag.
+
+### Fix
+To fix this vulnerability the `GenerateRandomSessionToken` function ([service/pkg/rpc/admin/auth/auth.go](..service/pkg/rpc/admin/auth/auth.go#L36)) needs to generate truly random session tokens.
+```diff
+ func GenerateRandomSessionToken() string {
+        token := make([]byte, sessionTokenSize)
+-       var wg sync.WaitGroup
+-       wg.Add(sessionTokenSize)
+-       for i := 0; i < sessionTokenSize; i++ {
+-               go set(&wg, &token[i], &i)
+-       }
+-       wg.Wait()
++       _, _ = rand.Read(token)
+        tokenHash := sha256.New()
+        tokenHash.Write(token)
+```
