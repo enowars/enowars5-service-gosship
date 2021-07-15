@@ -67,20 +67,8 @@ Let's assume that the flag is currently stored in a password-protected room call
 A proof-of-concept exploit script for this vulnerability can be found in the checker folder: [checker/cmd/private-room-exploit/main.go](../checker/cmd/private-room-exploit/main.go)
 
 ### Fix
-To fix this vulnerability the `strings.ToLower` function call needs to be removed.
-```go
-diff --git a/service/pkg/chat/user.go b/service/pkg/chat/user.go
-index 20103db..1a69aab 100644
---- a/service/pkg/chat/user.go
-+++ b/service/pkg/chat/user.go
-@@ -6,5 +6,4 @@ import (
-        "gosship/pkg/terminal"
-        "io"
--       "strings"
-
-        "github.com/gliderlabs/ssh"
-@@ -118,5 +117,5 @@ func (u *User) DBUpdate() error {
-
+To fix this vulnerability the `strings.ToLower` function call needs to be removed in [service/pkg/chat/user.go](../service/pkg/chat/user.go#L120).
+```diff
  func (u *User) UpdateCurrentRoom(room string) error {
 -       u.CurrentRoom = strings.ToLower(room)
 +       u.CurrentRoom = room
