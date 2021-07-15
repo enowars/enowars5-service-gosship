@@ -12,9 +12,10 @@
 ```
 
 - [Introduction](#introduction)
-- [Vulnerabilities and Exploits](#vulnerabilities-and-exploits)
+- [Vulnerabilities](#vulnerabilities)
     * [Vulnerability 1 (private rooms)](#vulnerability-1-private-rooms)
         + [Exploit](#exploit)
+        + [Fix](#fix)
     * [Vulnerability 2 (direct messages)](#vulnerability-2-direct-messages)
         + [Exploit](#exploit-1)
 - [Lessons Learned](#lessons-learned)
@@ -53,9 +54,39 @@ The service allows users to log in with their default SSH client and chat with o
 +---------------------------+-----------+------------------------------------------+
 ```
 
-# Vulnerabilities and Exploits
+Additionally, the service provides a gRPC admin interface to send messages to a specific room and fetch all users' direct messages.
+
+# Vulnerabilities
+The service has two different flag stores and one vulnerability each.
+
 ## Vulnerability 1 (private rooms)
+The first flag store is in the messages of password-protected rooms, and the vulnerability linked to this flag store is that users can join private rooms without knowing the correct password.
+
 ### Exploit
+Let's assume that the flag is currently stored in a password-protected room called `private`, and the attacker does not know the password to join the room. To exploit this vulnerability, the attacker needs to create a new room with the same (case-insensitive) name (e.g., `Private`). When creating a new room, the creator will automatically join the room. Hence, this will also update the current room of the user in the database. Updating the current room contains a bug that saves the lowercase room name in the database ([service/pkg/chat/user.go](../service/pkg/chat/user.go#L120)). So if the attacker leaves the service and rejoins, they are automatically in the lowercase name of the created room (`private`)  and able to read the previous messages in that room.
+A proof-of-concept exploit script for this vulnerability can be found in the checker folder: [checker/cmd/private-room-exploit/main.go](../checker/cmd/private-room-exploit/main.go)
+
+### Fix
+To fix this vulnerability the `strings.ToLower` function call needs to be removed.
+```go
+diff --git a/service/pkg/chat/user.go b/service/pkg/chat/user.go
+index 20103db..1a69aab 100644
+--- a/service/pkg/chat/user.go
++++ b/service/pkg/chat/user.go
+@@ -6,5 +6,4 @@ import (
+        "gosship/pkg/terminal"
+        "io"
+-       "strings"
+
+        "github.com/gliderlabs/ssh"
+@@ -118,5 +117,5 @@ func (u *User) DBUpdate() error {
+
+ func (u *User) UpdateCurrentRoom(room string) error {
+-       u.CurrentRoom = strings.ToLower(room)
++       u.CurrentRoom = room
+        return u.DBUpdate()
+ }
+````
 
 ## Vulnerability 2 (direct messages)
 ### Exploit
