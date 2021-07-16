@@ -61,7 +61,7 @@ Additionally, the service provides a gRPC admin interface to send messages to a 
 The embedded key-value database [badger](https://github.com/dgraph-io/badger) is used to persist users, messages, rooms, and the SSH private key of the server. All database entries (except the config) expire after a certain time (messages: 30min, users and rooms: 1h; [service/pkg/database/database.go](../service/pkg/database/database.go#L103)).
 
 # Vulnerabilities
-The service has two different flag stores and one vulnerability each.
+The service has two different flag stores and one vulnerability each. The fixed version of the service can be found on the [fixed](https://github.com/enowars/enowars5-service-gosship/compare/fixed) branch.
 
 ## Vulnerability 1 (private rooms)
 The first flag store is in the messages of password-protected rooms, and the vulnerability linked to this flag store is that users can join private rooms without knowing the correct password.
