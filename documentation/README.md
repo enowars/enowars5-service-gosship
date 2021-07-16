@@ -12,6 +12,7 @@
 ```
 
 - [Introduction](#introduction)
+    * [Database](#database)
 - [Vulnerabilities](#vulnerabilities)
     * [Vulnerability 1 (private rooms)](#vulnerability-1-private-rooms)
         + [Exploit](#exploit)
@@ -54,7 +55,10 @@ The service allows users to log in with their default SSH client and chat with o
 +---------------------------+-----------+------------------------------------------+
 ```
 
-Additionally, the service provides a gRPC admin interface to send messages to a specific room and fetch all users' direct messages.
+Additionally, the service provides a gRPC admin interface to send messages to a specific room and fetch all users' direct messages. This interface should only be accessible by the checker (the public key of the checker is embedded in the service), so it can verify the persistence of flags. An example of the admin interface can be found here: [checker/cmd/checker-test/main.go](../checker/cmd/checker-test/main.go).
+
+## Database
+The embedded key-value database [badger](https://github.com/dgraph-io/badger) is used to persist users, messages, rooms, and the SSH private key of the server. All database entries (except the config) expire after a certain time (messages: 30min, users and rooms: 1h; [service/pkg/database/database.go](../service/pkg/database/database.go#L103)).
 
 # Vulnerabilities
 The service has two different flag stores and one vulnerability each.
@@ -81,8 +85,9 @@ The second flag store is in the direct messages between two users, and the conne
 
 ### Exploit
 To access the flags in the direct messages the `DumpDirectMessages` method from the admin interface is required. That means the attacker needs to get access to the admin interface first.
-In the `GenerateRandomSessionToken` function ([service/pkg/rpc/admin/auth/auth.go](../service/pkg/rpc/admin/auth/auth.go#L36)) a supposedly random 32-byte session token is generated. A race condition in the function when calling the set function will lead to a 32-byte session token where every byte has the same value (this is a common go mistake [https://github.com/golang/go/wiki/CommonMistakes#using-reference-to-loop-iterator-variable](https://github.com/golang/go/wiki/CommonMistakes#using-reference-to-loop-iterator-variable)). Thus, only 256 different session tokens are possible. The attacker easily finds a valid token using brute-forced.
+In the `GenerateRandomSessionToken` function ([service/pkg/rpc/admin/auth/auth.go](../service/pkg/rpc/admin/auth/auth.go#L36)) a supposedly random 32-byte session token is generated. A race condition in the function when calling the set function will lead to a 32-byte session token where every byte has the same value ([this is a common go mistake](https://github.com/golang/go/wiki/CommonMistakes#using-reference-to-loop-iterator-variable)). Thus, only 256 different session tokens are possible. The attacker easily finds a valid token using brute-forced.
 With access to the admin interface, the attacker invokes the `DumpDirectMessages` method and retrieves the flag.
+A proof-of-concept exploit script for this vulnerability can be found in the checker folder: [checker/cmd/session-exploit/main.go](../checker/cmd/session-exploit/main.go)
 
 ### Fix
 To fix this vulnerability the `GenerateRandomSessionToken` function ([service/pkg/rpc/admin/auth/auth.go](../service/pkg/rpc/admin/auth/auth.go#L36)) needs to generate truly random session tokens.
